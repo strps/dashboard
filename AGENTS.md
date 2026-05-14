@@ -34,6 +34,14 @@ drizzle/                        generated migrations
 
 # Auth + data access (non-negotiable)
 
+## GitHub OAuth gotcha — email required
+
+Better Auth's GitHub provider fetches the user's email from `/user/emails` (requires `user:email` scope, already in the defaults). If the user's GitHub account has **no email configured**, that fetch returns nothing and the sign-in fails with `email_not_found`.
+
+Fix on the user side: add an email at github.com → Settings → Emails.
+
+The [auth config](src/lib/auth.ts) also has a `mapProfileToUser` fallback that synthesizes `{id}+{login}@users.noreply.github.com` so the error doesn't surface as a blank redirect. If a GitHub user with no real email needs access, add their noreply address to the `allowed_email` table. See [GitHub noreply email format](https://docs.github.com/en/account-and-profile/reference/email-addresses-reference#your-noreply-email-address).
+
 - [src/proxy.ts](src/proxy.ts) is an **optimistic UX gate** — it only checks that a session cookie *exists*. It does **not** verify the signature or hit the DB. Never treat it as a security boundary.
 - Real authorization lives in [src/lib/dal/](src/lib/dal/). Every server-side read of user-scoped data calls `verifySession()` (or `verifyAdmin()`) from [session.ts](src/lib/dal/session.ts), which runs `auth.api.getSession` and returns the verified `userId`.
 - DAL functions are marked `import "server-only"` and scope every query by `userId`. Do not bypass them from server actions, route handlers, or RSCs.
