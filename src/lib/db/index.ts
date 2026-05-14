@@ -1,8 +1,8 @@
 import "server-only";
 
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless";
 import { drizzle as drizzlePg } from "drizzle-orm/postgres-js";
-import { neon } from "@neondatabase/serverless";
+import { Pool } from "@neondatabase/serverless";
 import postgres from "postgres";
 
 import * as schema from "./schema";
@@ -14,5 +14,5 @@ if (!databaseUrl) {
 
 export const db =
   process.env.NODE_ENV === "production"
-    ? drizzleNeon(neon(databaseUrl), { schema })
+    ? drizzleNeon(new Pool({ connectionString: databaseUrl }), { schema })
     : drizzlePg(postgres(databaseUrl), { schema });
