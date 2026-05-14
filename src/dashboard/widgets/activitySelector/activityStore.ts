@@ -1,46 +1,44 @@
 import { create } from "zustand";
 
-export interface Activity {
-  id: string;
-  name: string;
-}
-
-export interface TimeEntry {
-  activityId: string;
-  start: number;
-  end: number;
-}
+import type { Activity, OpenEntry } from "./schemas";
 
 interface ActivityState {
   activities: Activity[];
-  activeActivityId: string | null;
-  activeStartedAt: number | null;
-  entries: TimeEntry[];
-  setActiveActivity: (activityId: string | null) => void;
+  open: OpenEntry | null;
+  hydrated: boolean;
+  setHydrated: (state: { activities: Activity[]; open: OpenEntry | null }) => void;
+  setActivities: (activities: Activity[]) => void;
+  setOpen: (open: OpenEntry | null) => void;
+  upsertActivity: (activity: Activity) => void;
+  removeActivity: (id: string) => void;
 }
 
 export const useActivityStore = create<ActivityState>((set) => ({
-  activities: [
-    { id: "deep-work", name: "Deep Work" },
-    { id: "meetings",  name: "Meetings" },
-    { id: "email",     name: "Email" },
-    { id: "break",     name: "Break" },
-  ],
-  activeActivityId: null,
-  activeStartedAt: null,
-  entries: [],
+  activities: [],
+  open: null,
+  hydrated: false,
 
-  setActiveActivity: (activityId) =>
-    set((state) => {
-      const now = Date.now();
-      const closing: TimeEntry[] =
-        state.activeActivityId && state.activeStartedAt
-          ? [{ activityId: state.activeActivityId, start: state.activeStartedAt, end: now }]
-          : [];
-      return {
-        entries: [...state.entries, ...closing],
-        activeActivityId: activityId,
-        activeStartedAt: activityId ? now : null,
-      };
+  setHydrated: ({ activities, open }) =>
+    set({ activities, open, hydrated: true }),
+
+  setActivities: (activities) => set({ activities }),
+
+  setOpen: (open) => set({ open }),
+
+  upsertActivity: (activity) =>
+    set((s) => {
+      const idx = s.activities.findIndex((a) => a.id === activity.id);
+      const next =
+        idx === -1
+          ? [...s.activities, activity]
+          : s.activities.map((a) => (a.id === activity.id ? activity : a));
+      next.sort((a, b) => a.order - b.order);
+      return { activities: next };
     }),
+
+  removeActivity: (id) =>
+    set((s) => ({
+      activities: s.activities.filter((a) => a.id !== id),
+      open: s.open?.activityId === id ? null : s.open,
+    })),
 }));

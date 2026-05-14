@@ -1,8 +1,12 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  index,
+  integer,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -54,3 +58,40 @@ export const verification = pgTable("verification", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const activity = pgTable(
+  "activity",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull(),
+    order: integer("order").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("activity_user_order_idx").on(t.userId, t.order)],
+);
+
+export const timeEntry = pgTable(
+  "time_entry",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    activityId: text("activity_id")
+      .notNull()
+      .references(() => activity.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    endedAt: timestamp("ended_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("time_entry_user_started_idx").on(t.userId, t.startedAt),
+    uniqueIndex("time_entry_one_open_per_user")
+      .on(t.userId)
+      .where(sql`${t.endedAt} IS NULL`),
+  ],
+);

@@ -13,6 +13,7 @@ export interface WidgetDefinition {
   minH?: number;
   maxH?: number;
   component: ComponentType<WidgetComponentProps>;
+  configComponent?: ComponentType;
 }
 
 export const WIDGET_REGISTRY = {} as Record<WidgetType, WidgetDefinition>;
