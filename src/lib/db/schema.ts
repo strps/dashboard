@@ -12,6 +12,8 @@ import {
 
 import type { LayoutItem } from "react-grid-layout";
 
+import type { NoteBlock } from "@/dashboard/widgets/notes/schemas";
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -88,6 +90,19 @@ export const dashboardLayout = pgTable("dashboard_layout", {
   locked: boolean("locked").notNull().default(true),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const note = pgTable(
+  "note",
+  {
+    widgetInstanceId: text("widget_instance_id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    blocks: jsonb("blocks").$type<NoteBlock[]>().notNull(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("note_user_idx").on(t.userId)],
+);
 
 export const timeEntry = pgTable(
   "time_entry",
