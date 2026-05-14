@@ -47,6 +47,7 @@ export function CheatsheetWidget({ id }: WidgetComponentProps) {
     <BaseWidget id={id} locked={locked} onRemove={onRemove} onConfigure={() => setConfigOpen(true)}>
       <div className="h-full w-full rounded-xl bg-white/5 flex flex-col">
         <div className="flex items-center gap-2 p-2 border-b border-white/10">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30 pl-1 shrink-0">Cheatsheet</span>
           <div className="relative flex-1">
             <Search
               size={12}

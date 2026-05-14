@@ -29,6 +29,7 @@ export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
   return (
     <BaseWidget id={id} locked={locked} onRemove={onRemove}>
       <div className="h-full w-full rounded-xl bg-white/5 flex flex-col p-3 gap-3">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Activity</div>
         <div className="flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-wider text-white/30">Now tracking</span>
           <span className="text-lg text-white/90 truncate flex items-center gap-2">

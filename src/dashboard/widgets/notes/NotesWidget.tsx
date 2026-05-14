@@ -46,7 +46,8 @@ export function NotesWidget({ id }: WidgetComponentProps) {
   return (
     <BaseWidget id={id} locked={locked} onRemove={onRemove}>
       <div className="h-full w-full rounded-xl bg-white/5 flex flex-col">
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/30">Notes</div>
+        <div className="flex-1 overflow-y-auto p-3 pt-1 space-y-2">
           {!hydrated && (
             <div className="text-white/30 text-xs font-mono">Loading…</div>
           )}
