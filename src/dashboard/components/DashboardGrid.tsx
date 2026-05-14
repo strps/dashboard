@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import GridLayout, { verticalCompactor } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { DashboardHeader } from "./DashboardHeader";
@@ -9,7 +10,12 @@ import { WIDGET_REGISTRY } from "../widgets";
 const GRID_WIDTH = 1200;
 
 export function DashboardGrid() {
-  const { layout, instances, setLayout, addWidget, toggleLocked, locked } = useDashboardStore();
+  const { layout, instances, setLayout, addWidget, toggleLocked, locked, hydrateFromServer } =
+    useDashboardStore();
+
+  useEffect(() => {
+    hydrateFromServer();
+  }, [hydrateFromServer]);
 
   const layoutWithConstraints = layout.map((item) => {
     const instance = instances.find((w) => w.id === item.i);

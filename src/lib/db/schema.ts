@@ -3,11 +3,14 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+import type { LayoutItem } from "react-grid-layout";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -73,6 +76,18 @@ export const activity = pgTable(
   },
   (t) => [index("activity_user_order_idx").on(t.userId, t.order)],
 );
+
+export const dashboardLayout = pgTable("dashboard_layout", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  layout: jsonb("layout").$type<LayoutItem[]>().notNull(),
+  instances: jsonb("instances")
+    .$type<{ id: string; type: string }[]>()
+    .notNull(),
+  locked: boolean("locked").notNull().default(true),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 export const timeEntry = pgTable(
   "time_entry",
