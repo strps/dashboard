@@ -1,8 +1,13 @@
+import { redirect } from "next/navigation";
+
 import { listAllowedEmails } from "@/lib/dal/allowedEmails";
+import { verifySession } from "@/lib/dal/session";
 
 import { AllowedEmailsManager } from "./AllowedEmailsManager";
 
 export default async function SecuritySettingsPage() {
+  const { isAdmin } = await verifySession();
+  if (!isAdmin) redirect("/settings");
   const emails = await listAllowedEmails();
   return (
     <div className="max-w-3xl space-y-6">

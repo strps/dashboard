@@ -36,6 +36,13 @@
       "when": 1778777712409,
       "tag": "0004_fantastic_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778781026476,
+      "tag": "0005_naive_tigra",
+      "breakpoints": true
     }
   ]
 }

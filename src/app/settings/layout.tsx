@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
 import { verifySession } from "@/lib/dal/session";
@@ -12,8 +11,6 @@ export default async function SettingsLayout({
   children: React.ReactNode;
 }) {
   const { isAdmin } = await verifySession();
-
-  if (!isAdmin) redirect("/");
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
@@ -30,7 +27,7 @@ export default async function SettingsLayout({
         </h1>
       </header>
       <div className="flex">
-        <SettingsNav />
+        <SettingsNav isAdmin={isAdmin} />
         <main className="flex-1 min-w-0 p-6">{children}</main>
       </div>
     </div>

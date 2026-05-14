@@ -88,6 +88,16 @@ Persistence pattern (used by notes, activity selector, layout itself):
 - Debounced server save via a server action (typical debounce ~500ms; flush immediately on add/remove/toggle).
 - On mount, the hook calls the `get…Action` once and hydrates the store; a `hydrated[id]` flag prevents re-fetching.
 
+### Shared (per-user) widget data
+
+Some widgets surface a per-user **library** that's the same across every instance of that widget (e.g. cheatsheet entries + tags). For these:
+
+- Storage uses normal user-scoped tables — **not** keyed by `widgetInstanceId`. See [src/lib/dal/cheatsheet.ts](src/lib/dal/cheatsheet.ts).
+- CRUD UI lives on a dedicated `/settings/<widget>` page (signed-in users, not admin-only), **not** in the widget config dialog. See [src/app/settings/cheatsheet/](src/app/settings/cheatsheet/).
+- Per-instance config (e.g. which tags become filter buttons in *this* cheatsheet) lives in a config dialog opened from a gear icon on the widget itself, and is keyed by `widgetInstanceId` in its own table. See [src/dashboard/widgets/cheatsheet/config/ConfigPanel.tsx](src/dashboard/widgets/cheatsheet/config/ConfigPanel.tsx) and the `cheatsheet_widget_config` table.
+- The widget's zustand store has two slices: a single user-global slice with one `libraryHydrated` flag, plus the usual per-instance slice keyed by `widgetInstanceId`. See [src/dashboard/widgets/cheatsheet/cheatsheetStore.ts](src/dashboard/widgets/cheatsheet/cheatsheetStore.ts).
+- The global `WidgetConfigDialog` is per-widget-*type* (not per-instance), so don't use its `configComponent` slot for per-instance settings — host your own `Dialog` inside the widget instead.
+
 ## Widget interactivity vs. lock
 
 The dashboard has a global `locked` flag. When `locked === false`, [BaseWidget](src/dashboard/widgets/base/BaseWidget.tsx) wraps content in a `drag-handle` div — the entire widget becomes draggable. Inside widgets, **disable interactive controls when unlocked** and call `e.stopPropagation()` on `onMouseDown` for any nested clickable/typeable element, otherwise the grid drag handler eats the event. See [NotesWidget](src/dashboard/widgets/notes/NotesWidget.tsx) for the pattern.

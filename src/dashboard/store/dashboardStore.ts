@@ -6,7 +6,13 @@ import {
   saveDashboardLayoutAction,
 } from "../actions";
 
-export type WidgetType = "clock" | "stats" | "notes" | "weather" | "activitySelector";
+export type WidgetType =
+  | "clock"
+  | "stats"
+  | "notes"
+  | "weather"
+  | "activitySelector"
+  | "cheatsheet";
 
 export interface WidgetInstance {
   id: string;
@@ -19,6 +25,7 @@ const DEFAULT_SIZES: Record<WidgetType, { w: number; h: number }> = {
   notes:            { w: 4, h: 4 },
   weather:          { w: 3, h: 3 },
   activitySelector: { w: 3, h: 3 },
+  cheatsheet:       { w: 5, h: 5 },
 };
 
 const DEFAULT_LAYOUT: LayoutItem[] = [

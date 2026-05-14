@@ -1,10 +1,12 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -12,6 +14,7 @@ import {
 
 import type { LayoutItem } from "react-grid-layout";
 
+import type { FilterButton } from "@/dashboard/widgets/cheatsheet/schemas";
 import type { NoteBlock } from "@/dashboard/widgets/notes/schemas";
 
 export const user = pgTable("user", {
@@ -112,6 +115,78 @@ export const note = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [index("note_user_idx").on(t.userId)],
+);
+
+export const cheatsheetTag = pgTable(
+  "cheatsheet_tag",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    parentId: text("parent_id"),
+    color: text("color"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("cheatsheet_tag_user_idx").on(t.userId),
+    foreignKey({
+      columns: [t.parentId],
+      foreignColumns: [t.id],
+      name: "cheatsheet_tag_parent_fk",
+    }).onDelete("set null"),
+  ],
+);
+
+export const cheatsheetEntry = pgTable(
+  "cheatsheet_entry",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    syntax: text("syntax").notNull(),
+    description: text("description").notNull(),
+    priority: integer("priority").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("cheatsheet_entry_user_idx").on(t.userId)],
+);
+
+export const cheatsheetEntryTag = pgTable(
+  "cheatsheet_entry_tag",
+  {
+    entryId: text("entry_id")
+      .notNull()
+      .references(() => cheatsheetEntry.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => cheatsheetTag.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.entryId, t.tagId] }),
+    index("cheatsheet_entry_tag_tag_idx").on(t.tagId),
+  ],
+);
+
+export const cheatsheetWidgetConfig = pgTable(
+  "cheatsheet_widget_config",
+  {
+    widgetInstanceId: text("widget_instance_id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    filterButtons: jsonb("filter_buttons")
+      .$type<FilterButton[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("cheatsheet_widget_config_user_idx").on(t.userId)],
 );
 
 export const timeEntry = pgTable(
