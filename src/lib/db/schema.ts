@@ -20,8 +20,18 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const allowedEmail = pgTable("allowed_email", {
+  email: text("email").primaryKey(),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  addedByUserId: text("added_by_user_id").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const session = pgTable("session", {

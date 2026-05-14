@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Unlock, Plus, ChevronDown, LogOut, Settings } from "lucide-react";
+import Link from "next/link";
+import { Lock, Unlock, Plus, ChevronDown, LogOut, Settings, Shield } from "lucide-react";
 import { WIDGET_REGISTRY } from "../widgets";
 import type { WidgetType } from "../store/dashboardStore";
 import { authClient } from "@/lib/auth-client";
@@ -10,9 +11,10 @@ interface DashboardHeaderProps {
   locked: boolean;
   onToggleLock: () => void;
   onAddWidget: (type: WidgetType) => void;
+  isAdmin: boolean;
 }
 
-export function DashboardHeader({ locked, onToggleLock, onAddWidget }: DashboardHeaderProps) {
+export function DashboardHeader({ locked, onToggleLock, onAddWidget, isAdmin }: DashboardHeaderProps) {
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -88,6 +90,16 @@ export function DashboardHeader({ locked, onToggleLock, onAddWidget }: Dashboard
         >
           <Settings size={14} className="text-white/60" />
         </button>
+
+        {isAdmin && (
+          <Link
+            href="/settings/security"
+            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+            title="Admin settings"
+          >
+            <Shield size={14} className="text-white/60" />
+          </Link>
+        )}
 
         <button
           onClick={onSignOut}

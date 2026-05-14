@@ -9,7 +9,11 @@ import { WIDGET_REGISTRY } from "../widgets";
 
 const GRID_WIDTH = 1200;
 
-export function DashboardGrid() {
+interface DashboardGridProps {
+  isAdmin: boolean;
+}
+
+export function DashboardGrid({ isAdmin }: DashboardGridProps) {
   const { layout, instances, setLayout, addWidget, toggleLocked, locked, hydrateFromServer } =
     useDashboardStore();
 
@@ -31,7 +35,12 @@ export function DashboardGrid() {
 
   return (
     <>
-      <DashboardHeader locked={locked} onToggleLock={toggleLocked} onAddWidget={addWidget} />
+      <DashboardHeader
+        locked={locked}
+        onToggleLock={toggleLocked}
+        onAddWidget={addWidget}
+        isAdmin={isAdmin}
+      />
 
       <main className="p-6">
         <GridLayout
