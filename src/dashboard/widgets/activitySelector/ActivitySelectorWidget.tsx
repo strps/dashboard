@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { BaseWidget } from "../base/BaseWidget";
 import { useWidget } from "../base/useWidget";
 import { registerWidget, type WidgetComponentProps } from "../registry";
-import { ActivitySelectorConfig } from "./config/ConfigPanel";
 import { formatElapsed, useActivitySelector } from "./useActivitySelector";
 
 export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
@@ -114,5 +113,4 @@ registerWidget("activitySelector", {
   minW: 2,
   minH: 3,
   component: ActivitySelectorWidget,
-  configComponent: ActivitySelectorConfig,
 });

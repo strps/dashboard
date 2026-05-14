@@ -11,9 +11,11 @@ const GRID_WIDTH = 1200;
 
 interface DashboardGridProps {
   isAdmin: boolean;
+  userName: string;
+  userEmail: string;
 }
 
-export function DashboardGrid({ isAdmin }: DashboardGridProps) {
+export function DashboardGrid({ isAdmin, userName, userEmail }: DashboardGridProps) {
   const { layout, instances, setLayout, addWidget, toggleLocked, locked, hydrateFromServer } =
     useDashboardStore();
 
@@ -40,6 +42,8 @@ export function DashboardGrid({ isAdmin }: DashboardGridProps) {
         onToggleLock={toggleLocked}
         onAddWidget={addWidget}
         isAdmin={isAdmin}
+        userName={userName}
+        userEmail={userEmail}
       />
 
       <main className="p-6">

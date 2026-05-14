@@ -44,7 +44,7 @@ export function CheatsheetWidget({ id }: WidgetComponentProps) {
   );
 
   return (
-    <BaseWidget id={id} locked={locked} onRemove={onRemove}>
+    <BaseWidget id={id} locked={locked} onRemove={onRemove} onConfigure={() => setConfigOpen(true)}>
       <div className="h-full w-full rounded-xl bg-white/5 flex flex-col">
         <div className="flex items-center gap-2 p-2 border-b border-white/10">
           <div className="relative flex-1">

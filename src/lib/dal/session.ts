@@ -21,12 +21,14 @@ export class ForbiddenError extends Error {
 export async function verifySession(): Promise<{
   userId: string;
   isAdmin: boolean;
+  name: string;
+  email: string;
 }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) throw new UnauthorizedError();
   const isAdmin =
     (session.user as { isAdmin?: boolean | null }).isAdmin === true;
-  return { userId: session.user.id, isAdmin };
+  return { userId: session.user.id, isAdmin, name: session.user.name, email: session.user.email };
 }
 
 export async function verifyAdmin(): Promise<{ userId: string }> {
