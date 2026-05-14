@@ -100,6 +100,26 @@ export function useNotes(id: string) {
     [blocks, id, setBlocks],
   );
 
+  const insertBlockAfter = useCallback(
+    (blockId: string, type: "text" | "checklist"): string => {
+      const newBlock: NoteBlock =
+        type === "text"
+          ? { id: crypto.randomUUID(), type: "text", text: "" }
+          : { id: crypto.randomUUID(), type: "checklist", text: "", checked: false };
+      const idx = blocks.findIndex((b) => b.id === blockId);
+      const insertAt = idx === -1 ? blocks.length : idx + 1;
+      const next = [
+        ...blocks.slice(0, insertAt),
+        newBlock,
+        ...blocks.slice(insertAt),
+      ];
+      setBlocks(id, next);
+      saveNow(id, next);
+      return newBlock.id;
+    },
+    [blocks, id, setBlocks],
+  );
+
   return {
     blocks,
     hydrated,
@@ -108,6 +128,7 @@ export function useNotes(id: string) {
     updateBlockText,
     toggleChecklistBlock,
     removeBlock,
+    insertBlockAfter,
   };
 }
 

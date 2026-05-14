@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef } from "react";
+
 import { BaseWidget } from "../base/BaseWidget";
 import { useWidget } from "../base/useWidget";
 import { registerWidget, type WidgetComponentProps } from "../registry";
@@ -14,9 +16,32 @@ export function NotesWidget({ id }: WidgetComponentProps) {
     updateBlockText,
     toggleChecklistBlock,
     removeBlock,
+    insertBlockAfter,
   } = useNotes(id);
 
   const interactive = locked;
+  const blockRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
+
+  function handleEnter(blockId: string, type: "text" | "checklist") {
+    const newId = insertBlockAfter(blockId, type);
+    requestAnimationFrame(() => {
+      blockRefs.current.get(newId)?.focus();
+    });
+  }
+
+  function handleBackspaceEmpty(blockId: string) {
+    const idx = blocks.findIndex((b) => b.id === blockId);
+    removeBlock(blockId);
+    const prevId = idx > 0 ? blocks[idx - 1].id : null;
+    if (prevId) {
+      requestAnimationFrame(() => {
+        const el = blockRefs.current.get(prevId);
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      });
+    }
+  }
 
   return (
     <BaseWidget id={id} locked={locked} onRemove={onRemove}>
@@ -39,6 +64,12 @@ export function NotesWidget({ id }: WidgetComponentProps) {
               onTextChange={(text) => updateBlockText(block.id, text)}
               onToggle={() => toggleChecklistBlock(block.id)}
               onRemove={() => removeBlock(block.id)}
+              onEnter={() => handleEnter(block.id, block.type)}
+              onBackspaceEmpty={() => handleBackspaceEmpty(block.id)}
+              textareaRefCallback={(el) => {
+                if (el) blockRefs.current.set(block.id, el);
+                else blockRefs.current.delete(block.id);
+              }}
             />
           ))}
         </div>
@@ -73,6 +104,9 @@ interface BlockRowProps {
   onTextChange: (text: string) => void;
   onToggle: () => void;
   onRemove: () => void;
+  onEnter: () => void;
+  onBackspaceEmpty: () => void;
+  textareaRefCallback: (el: HTMLTextAreaElement | null) => void;
 }
 
 function BlockRow({
@@ -81,7 +115,38 @@ function BlockRow({
   onTextChange,
   onToggle,
   onRemove,
+  onEnter,
+  onBackspaceEmpty,
+  textareaRefCallback,
 }: BlockRowProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [block.text]);
+
+  const setRef = useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+      textareaRefCallback(el);
+    },
+    [textareaRefCallback],
+  );
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!interactive) return;
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onEnter();
+    } else if (e.key === "Backspace" && block.text === "") {
+      e.preventDefault();
+      onBackspaceEmpty();
+    }
+  }
+
   return (
     <div className="group flex items-start gap-2">
       {block.type === "checklist" && (
@@ -95,15 +160,17 @@ function BlockRow({
         />
       )}
       <textarea
-        className={`flex-1 bg-transparent text-sm resize-none outline-none placeholder:text-white/20 font-mono ${
+        ref={setRef}
+        className={`flex-1 bg-transparent text-sm resize-none overflow-hidden outline-none placeholder:text-white/20 font-mono ${
           block.type === "checklist" && block.checked
             ? "text-white/30 line-through"
             : "text-white/70"
         }`}
-        rows={block.type === "text" ? 2 : 1}
+        rows={1}
         placeholder={block.type === "text" ? "Paragraph…" : "Item…"}
         value={block.text}
         onChange={(e) => onTextChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
         readOnly={!interactive}
       />
