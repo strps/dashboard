@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { Lock, Unlock, Plus, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Lock, Unlock, Plus, ChevronDown, LogOut } from "lucide-react";
 import { WIDGET_REGISTRY } from "../widgets";
 import type { WidgetType } from "../store/dashboardStore";
+import { authClient } from "@/lib/auth-client";
 
 interface DashboardHeaderProps {
   locked: boolean;
@@ -12,6 +14,13 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ locked, onToggleLock, onAddWidget }: DashboardHeaderProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  async function onSignOut() {
+    await authClient.signOut();
+    router.replace("/sign-in");
+    router.refresh();
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -69,6 +78,14 @@ export function DashboardHeader({ locked, onToggleLock, onAddWidget }: Dashboard
             )}
           </div>
         )}
+
+        <button
+          onClick={onSignOut}
+          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+          title="Sign out"
+        >
+          <LogOut size={14} className="text-white/60" />
+        </button>
       </div>
     </header>
   );

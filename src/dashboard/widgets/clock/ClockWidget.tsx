@@ -6,12 +6,12 @@ import { useWidget } from "../base/useWidget";
 export function ClockWidget({ id }: WidgetComponentProps) {
   const { locked, onRemove } = useWidget(id);
   const now = useClock();
-  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const date = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  const time = now?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) ?? "--:--:-- --";
+  const date = now?.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }) ?? " ";
 
   return (
     <BaseWidget id={id} locked={locked} onRemove={onRemove}>
-      <div className="h-full w-full rounded-xl bg-white/5 flex flex-col items-center justify-center gap-1 select-none">
+      <div className="h-full w-full rounded-xl bg-white/5 flex flex-col items-center justify-center gap-1 select-none" suppressHydrationWarning>
         <span className="text-3xl font-mono text-white/90 tabular-nums">{time}</span>
         <span className="text-xs text-white/40">{date}</span>
       </div>
