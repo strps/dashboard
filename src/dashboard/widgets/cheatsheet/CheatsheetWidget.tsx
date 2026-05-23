@@ -9,16 +9,19 @@ import { BaseWidget } from "../base/BaseWidget";
 import { useWidget } from "../base/useWidget";
 import { registerWidget, type WidgetComponentProps } from "../registry";
 import { CheatsheetConfigPanel } from "./config/ConfigPanel";
+import { CheatsheetLibraryProvider } from "./libraryContext";
 import { useCheatsheet } from "./useCheatsheet";
 import type { CheatsheetEntry, CheatsheetTag, FilterButton } from "./schemas";
 
 export function CheatsheetWidget({ id }: WidgetComponentProps) {
   const { locked, onRemove } = useWidget(id);
   const {
+    tags,
     libraryHydrated,
     filterButtons,
     tagsById,
     filterEntries,
+    updateFilterButtons,
   } = useCheatsheet(id);
 
   const interactive = locked;
@@ -135,7 +138,11 @@ export function CheatsheetWidget({ id }: WidgetComponentProps) {
         title="Cheatsheet settings"
         widthClass="max-w-2xl"
       >
-        <CheatsheetConfigPanel instanceId={id} />
+        <CheatsheetConfigPanel
+          tags={tags}
+          filterButtons={filterButtons}
+          updateFilterButtons={updateFilterButtons}
+        />
       </Dialog>
     </BaseWidget>
   );
@@ -223,4 +230,5 @@ registerWidget("cheatsheet", {
   minW: 3,
   minH: 3,
   component: CheatsheetWidget,
+  provider: CheatsheetLibraryProvider,
 });

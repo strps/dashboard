@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 
 import {
   getWidgetConfigAction,
-  listEntriesAction,
-  listTagsAction,
   saveWidgetConfigAction,
 } from "./actions";
-import { useCheatsheetStore } from "./cheatsheetStore";
+import { useCheatsheetLibrary } from "./libraryContext";
 import type {
   CheatsheetEntry,
   CheatsheetTag,
@@ -43,35 +41,10 @@ function descendantsOf(tagId: string, tags: CheatsheetTag[]): Set<string> {
 }
 
 export function useCheatsheet(instanceId: string) {
-  const entries = useCheatsheetStore((s) => s.entries);
-  const tags = useCheatsheetStore((s) => s.tags);
-  const libraryHydrated = useCheatsheetStore((s) => s.libraryHydrated);
-  const setLibrary = useCheatsheetStore((s) => s.setLibrary);
+  const { entries, tags, libraryHydrated } = useCheatsheetLibrary();
 
-  const filterButtons =
-    useCheatsheetStore((s) => s.filterButtons[instanceId]) ?? EMPTY_BUTTONS;
-  const configHydrated = useCheatsheetStore(
-    (s) => s.configHydrated[instanceId] ?? false,
-  );
-  const setFilterButtons = useCheatsheetStore((s) => s.setFilterButtons);
-  const setConfigHydrated = useCheatsheetStore((s) => s.setConfigHydrated);
-
-  useEffect(() => {
-    if (libraryHydrated) return;
-    let cancelled = false;
-    Promise.all([listEntriesAction(), listTagsAction()])
-      .then(([e, t]) => {
-        if (cancelled) return;
-        setLibrary(e, t);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLibrary([], []);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [libraryHydrated, setLibrary]);
+  const [filterButtons, setFilterButtons] = useState<FilterButton[]>([]);
+  const [configHydrated, setConfigHydrated] = useState(false);
 
   useEffect(() => {
     if (configHydrated) return;
@@ -79,16 +52,17 @@ export function useCheatsheet(instanceId: string) {
     getWidgetConfigAction(instanceId)
       .then((buttons) => {
         if (cancelled) return;
-        setConfigHydrated(instanceId, buttons);
+        setFilterButtons(buttons);
+        setConfigHydrated(true);
       })
       .catch(() => {
         if (cancelled) return;
-        setConfigHydrated(instanceId, []);
+        setConfigHydrated(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [instanceId, configHydrated, setConfigHydrated]);
+  }, [instanceId, configHydrated]);
 
   const tagsById = useMemo(() => {
     const map = new Map<string, CheatsheetTag>();
@@ -127,10 +101,10 @@ export function useCheatsheet(instanceId: string) {
 
   const updateFilterButtons = useCallback(
     (next: FilterButton[]) => {
-      setFilterButtons(instanceId, next);
+      setFilterButtons(next);
       scheduleConfigSave(instanceId, next);
     },
-    [instanceId, setFilterButtons],
+    [instanceId],
   );
 
   return {
@@ -143,5 +117,3 @@ export function useCheatsheet(instanceId: string) {
     updateFilterButtons,
   };
 }
-
-const EMPTY_BUTTONS: FilterButton[] = [];

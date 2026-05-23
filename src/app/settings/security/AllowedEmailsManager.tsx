@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { Trash2, ShieldCheck, Shield } from "lucide-react";
 
 import type { AllowedEmailRecord } from "@/lib/dal/allowedEmails";
@@ -15,8 +15,35 @@ interface Props {
   initialEmails: AllowedEmailRecord[];
 }
 
+type OptimisticAction =
+  | { type: "add"; record: AllowedEmailRecord }
+  | { type: "remove"; email: string }
+  | { type: "set-admin"; email: string; isAdmin: boolean };
+
+function emailsReducer(
+  state: AllowedEmailRecord[],
+  action: OptimisticAction,
+): AllowedEmailRecord[] {
+  switch (action.type) {
+    case "add": {
+      const without = state.filter((p) => p.email !== action.record.email);
+      return [...without, action.record];
+    }
+    case "remove":
+      return state.filter((p) => p.email !== action.email);
+    case "set-admin":
+      return state.map((p) =>
+        p.email === action.email ? { ...p, isAdmin: action.isAdmin } : p,
+      );
+  }
+}
+
 export function AllowedEmailsManager({ initialEmails }: Props) {
   const [emails, setEmails] = useState(initialEmails);
+  const [optimisticEmails, applyOptimistic] = useOptimistic(
+    emails,
+    emailsReducer,
+  );
   const [email, setEmail] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +57,13 @@ export function AllowedEmailsManager({ initialEmails }: Props) {
       setError("Enter a valid email address.");
       return;
     }
+    const placeholder: AllowedEmailRecord = {
+      email: value,
+      isAdmin,
+      createdAt: new Date(),
+    };
     startTransition(async () => {
+      applyOptimistic({ type: "add", record: placeholder });
       try {
         const row = await addAllowedEmailAction(value, isAdmin);
         setEmails((prev) => {
@@ -47,23 +80,31 @@ export function AllowedEmailsManager({ initialEmails }: Props) {
 
   function onRemove(target: string) {
     startTransition(async () => {
-      await removeAllowedEmailAction(target);
-      setEmails((prev) => prev.filter((p) => p.email !== target));
+      applyOptimistic({ type: "remove", email: target });
+      try {
+        await removeAllowedEmailAction(target);
+        setEmails((prev) => prev.filter((p) => p.email !== target));
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to remove email.",
+        );
+      }
     });
   }
 
   function onToggleAdmin(target: string, next: boolean) {
-    setEmails((prev) =>
-      prev.map((p) => (p.email === target ? { ...p, isAdmin: next } : p)),
-    );
     startTransition(async () => {
+      applyOptimistic({ type: "set-admin", email: target, isAdmin: next });
       try {
         await setAllowedEmailAdminAction(target, next);
-      } catch {
         setEmails((prev) =>
           prev.map((p) =>
-            p.email === target ? { ...p, isAdmin: !next } : p,
+            p.email === target ? { ...p, isAdmin: next } : p,
           ),
+        );
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to update admin.",
         );
       }
     });
@@ -106,13 +147,13 @@ export function AllowedEmailsManager({ initialEmails }: Props) {
       </form>
 
       <div className="rounded-lg border border-white/10 overflow-hidden">
-        {emails.length === 0 ? (
+        {optimisticEmails.length === 0 ? (
           <div className="px-4 py-6 text-xs text-white/40">
             No emails on the allowlist yet.
           </div>
         ) : (
           <ul className="divide-y divide-white/10">
-            {emails.map((row) => (
+            {optimisticEmails.map((row) => (
               <li
                 key={row.email}
                 className="flex items-center gap-3 px-4 py-2.5"

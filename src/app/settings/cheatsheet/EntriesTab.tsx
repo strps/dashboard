@@ -18,13 +18,21 @@ import {
   type CheatsheetTag,
 } from "@/dashboard/widgets/cheatsheet/schemas";
 
+import type { EntryOptimisticAction } from "./CheatsheetManager";
+
 interface EntriesTabProps {
   entries: CheatsheetEntry[];
   tags: CheatsheetTag[];
   setEntries: React.Dispatch<React.SetStateAction<CheatsheetEntry[]>>;
+  applyOptimistic: (action: EntryOptimisticAction) => void;
 }
 
-export function EntriesTab({ entries, tags, setEntries }: EntriesTabProps) {
+export function EntriesTab({
+  entries,
+  tags,
+  setEntries,
+  applyOptimistic,
+}: EntriesTabProps) {
   const [editing, setEditing] = useState<CheatsheetEntry | null>(null);
   const [creating, setCreating] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -38,8 +46,13 @@ export function EntriesTab({ entries, tags, setEntries }: EntriesTabProps) {
   const onDelete = (id: string) => {
     if (!window.confirm("Delete this entry?")) return;
     startTransition(async () => {
-      await deleteEntryAction(id);
-      setEntries((prev) => prev.filter((e) => e.id !== id));
+      applyOptimistic({ type: "delete", id });
+      try {
+        await deleteEntryAction(id);
+        setEntries((prev) => prev.filter((e) => e.id !== id));
+      } catch {
+        // optimistic update is discarded when the transition ends
+      }
     });
   };
 
@@ -159,12 +172,17 @@ export function EntriesTab({ entries, tags, setEntries }: EntriesTabProps) {
             onCancel={() => setCreating(false)}
             onSubmit={(values) =>
               startTransition(async () => {
+                const placeholder: CheatsheetEntry = {
+                  id: `optimistic-${crypto.randomUUID()}`,
+                  ...values,
+                };
+                applyOptimistic({ type: "create", entry: placeholder });
+                setCreating(false);
                 try {
                   const created = await createEntryAction(values);
                   setEntries((prev) => [created, ...prev]);
-                  setCreating(false);
                 } catch {
-                  // form keeps open; ideally show error
+                  // optimistic add is discarded on transition end
                 }
               })
             }
@@ -185,14 +203,19 @@ export function EntriesTab({ entries, tags, setEntries }: EntriesTabProps) {
             onCancel={() => setEditing(null)}
             onSubmit={(values) =>
               startTransition(async () => {
+                const optimistic: CheatsheetEntry = {
+                  ...editing,
+                  ...values,
+                };
+                applyOptimistic({ type: "update", entry: optimistic });
+                setEditing(null);
                 try {
                   const updated = await updateEntryAction(editing.id, values);
                   setEntries((prev) =>
                     prev.map((e) => (e.id === updated.id ? updated : e)),
                   );
-                  setEditing(null);
                 } catch {
-                  // keep open
+                  // optimistic update is discarded on transition end
                 }
               })
             }

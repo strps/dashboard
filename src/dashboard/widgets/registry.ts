@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { WidgetType } from "../store/dashboardStore";
 
 export interface WidgetComponentProps {
@@ -14,6 +14,12 @@ export interface WidgetDefinition {
   maxH?: number;
   component: ComponentType<WidgetComponentProps>;
   configComponent?: ComponentType;
+  /**
+   * Optional shared provider mounted around the dashboard grid when at least one
+   * instance of this widget type is present. Use for per-user state shared
+   * across multiple instances (e.g. cheatsheet library).
+   */
+  provider?: ComponentType<{ children: ReactNode }>;
 }
 
 export const WIDGET_REGISTRY = {} as Record<WidgetType, WidgetDefinition>;

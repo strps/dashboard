@@ -189,6 +189,45 @@ export const cheatsheetWidgetConfig = pgTable(
   (t) => [index("cheatsheet_widget_config_user_idx").on(t.userId)],
 );
 
+export const activityTag = pgTable(
+  "activity_tag",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    parentId: text("parent_id"),
+    color: text("color"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("activity_tag_user_idx").on(t.userId),
+    foreignKey({
+      columns: [t.parentId],
+      foreignColumns: [t.id],
+      name: "activity_tag_parent_fk",
+    }).onDelete("set null"),
+  ],
+);
+
+export const activityActivityTag = pgTable(
+  "activity_activity_tag",
+  {
+    activityId: text("activity_id")
+      .notNull()
+      .references(() => activity.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => activityTag.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.activityId, t.tagId] }),
+    index("activity_activity_tag_tag_idx").on(t.tagId),
+  ],
+);
+
 export const timeEntry = pgTable(
   "time_entry",
   {

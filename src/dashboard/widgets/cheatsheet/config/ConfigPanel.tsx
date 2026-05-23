@@ -4,15 +4,19 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { useCheatsheet } from "../useCheatsheet";
 import type { CheatsheetTag, FilterButton } from "../schemas";
 
 interface CheatsheetConfigProps {
-  instanceId: string;
+  tags: CheatsheetTag[];
+  filterButtons: FilterButton[];
+  updateFilterButtons: (next: FilterButton[]) => void;
 }
 
-export function CheatsheetConfigPanel({ instanceId }: CheatsheetConfigProps) {
-  const { tags, filterButtons, updateFilterButtons } = useCheatsheet(instanceId);
+export function CheatsheetConfigPanel({
+  tags,
+  filterButtons,
+  updateFilterButtons,
+}: CheatsheetConfigProps) {
 
   const tagsById = useMemo(() => {
     const map = new Map<string, CheatsheetTag>();

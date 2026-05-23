@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useOptimistic, useState } from "react";
 
 import type {
   CheatsheetEntry,
@@ -17,6 +17,55 @@ interface CheatsheetManagerProps {
 
 type TabKey = "entries" | "tags";
 
+export type EntryOptimisticAction =
+  | { type: "create"; entry: CheatsheetEntry }
+  | { type: "update"; entry: CheatsheetEntry }
+  | { type: "delete"; id: string }
+  | { type: "strip-tag"; tagId: string };
+
+export type TagOptimisticAction =
+  | { type: "create"; tag: CheatsheetTag }
+  | { type: "update"; tag: CheatsheetTag }
+  | { type: "delete"; id: string };
+
+function entriesReducer(
+  state: CheatsheetEntry[],
+  action: EntryOptimisticAction,
+): CheatsheetEntry[] {
+  switch (action.type) {
+    case "create":
+      return [action.entry, ...state];
+    case "update":
+      return state.map((e) => (e.id === action.entry.id ? action.entry : e));
+    case "delete":
+      return state.filter((e) => e.id !== action.id);
+    case "strip-tag":
+      return state.map((e) =>
+        e.tagIds.includes(action.tagId)
+          ? { ...e, tagIds: e.tagIds.filter((t) => t !== action.tagId) }
+          : e,
+      );
+  }
+}
+
+function tagsReducer(
+  state: CheatsheetTag[],
+  action: TagOptimisticAction,
+): CheatsheetTag[] {
+  switch (action.type) {
+    case "create":
+      return [...state, action.tag].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+    case "update":
+      return state.map((t) => (t.id === action.tag.id ? action.tag : t));
+    case "delete":
+      return state
+        .filter((t) => t.id !== action.id)
+        .map((t) => (t.parentId === action.id ? { ...t, parentId: null } : t));
+  }
+}
+
 export function CheatsheetManager({
   initialEntries,
   initialTags,
@@ -25,6 +74,15 @@ export function CheatsheetManager({
   const [entries, setEntries] = useState(initialEntries);
   const [tags, setTags] = useState(initialTags);
 
+  const [optimisticEntries, applyEntryOptimistic] = useOptimistic(
+    entries,
+    entriesReducer,
+  );
+  const [optimisticTags, applyTagOptimistic] = useOptimistic(
+    tags,
+    tagsReducer,
+  );
+
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden">
       <div className="flex border-b border-white/10">
@@ -32,21 +90,28 @@ export function CheatsheetManager({
           active={tab === "entries"}
           onClick={() => setTab("entries")}
         >
-          Entries ({entries.length})
+          Entries ({optimisticEntries.length})
         </TabButton>
         <TabButton active={tab === "tags"} onClick={() => setTab("tags")}>
-          Tags ({tags.length})
+          Tags ({optimisticTags.length})
         </TabButton>
       </div>
       <div className="p-4">
         {tab === "entries" ? (
           <EntriesTab
-            entries={entries}
-            tags={tags}
+            entries={optimisticEntries}
+            tags={optimisticTags}
             setEntries={setEntries}
+            applyOptimistic={applyEntryOptimistic}
           />
         ) : (
-          <TagsTab tags={tags} setTags={setTags} setEntries={setEntries} />
+          <TagsTab
+            tags={optimisticTags}
+            setTags={setTags}
+            setEntries={setEntries}
+            applyTagOptimistic={applyTagOptimistic}
+            applyEntryOptimistic={applyEntryOptimistic}
+          />
         )}
       </div>
     </div>

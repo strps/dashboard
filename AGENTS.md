@@ -54,8 +54,9 @@ Three steps:
 1. Add the new type to the `WidgetType` union and a default size in `DEFAULT_SIZES` in [src/dashboard/store/dashboardStore.ts](src/dashboard/store/dashboardStore.ts).
 2. Create `src/dashboard/widgets/<name>/` with at minimum:
    - `<Name>Widget.tsx` — component + `registerWidget(...)` call at module scope.
-   - `use<Name>.ts` — hook owning the widget's logic.
-   - If the widget has persistent state: `schemas.ts` (zod), `actions.ts` (`"use server"`), `<name>Store.ts` (zustand, keyed by widget instance id), and a DAL module under [src/lib/dal/](src/lib/dal/).
+   - `use<Name>.ts` — hook owning the widget's logic. Hold per-instance state with `useState`; wrap discrete mutations in `useOptimistic` + `useTransition`. See [activity selector](src/dashboard/widgets/activitySelector/useActivitySelector.ts) for the canonical pattern.
+   - If the widget has persistent state: `schemas.ts` (zod), `actions.ts` (`"use server"`), and a DAL module under [src/lib/dal/](src/lib/dal/).
+   - If the widget needs **shared per-user state across instances** (a library / catalog): add `libraryContext.tsx` exporting a `<Name>LibraryProvider` + `use<Name>Library` hook, and pass `provider: <Name>LibraryProvider` to `registerWidget(...)`. The dashboard grid composes the provider around the grid whenever at least one instance of the widget type is mounted. See [cheatsheet/libraryContext.tsx](src/dashboard/widgets/cheatsheet/libraryContext.tsx).
 3. Add `import "./<name>/<Name>Widget";` to [src/dashboard/widgets/index.ts](src/dashboard/widgets/index.ts) — `registerWidget` runs as a side effect of importing the file.
 
 Minimal widget skeleton:
@@ -89,12 +90,12 @@ Grid size constraints (`minW`, `maxW`, `minH`, `maxH`) belong in `registerWidget
 
 ## Widget data ownership
 
-**Widgets own their own data.** The dashboard store is layout-only — instances, grid positions, lock state. Anything widget-specific (notes content, selected activity, etc.) lives in a store inside the widget's own directory, keyed by the widget instance `id`. See [src/dashboard/widgets/notes/notesStore.ts](src/dashboard/widgets/notes/notesStore.ts) for the canonical pattern.
+**Widgets own their own data.** The dashboard store is layout-only — instances, grid positions, lock state. Anything widget-specific (notes content, selected activity, etc.) lives in React state inside the widget's component tree, keyed by the widget instance `id`. See [useNotes.ts](src/dashboard/widgets/notes/useNotes.ts) for the canonical pattern.
 
 Persistence pattern (used by notes, activity selector, layout itself):
-- Optimistic local update → zustand store.
-- Debounced server save via a server action (typical debounce ~500ms; flush immediately on add/remove/toggle).
-- On mount, the hook calls the `get…Action` once and hydrates the store; a `hydrated[id]` flag prevents re-fetching.
+- **Discrete mutations** (add, remove, toggle, reorder, CRUD): wrap in `useOptimistic` + `useTransition`. Apply the optimistic update first, await the server action, commit the canonical row into base `useState` on success. The optimistic state is auto-discarded when the transition ends, so failures revert with no manual rollback. See [useActivitySelector.ts](src/dashboard/widgets/activitySelector/useActivitySelector.ts).
+- **Continuous edits** (text typed into a field): plain `useState` mutation + a module-level debounced `saveAction` call (typical debounce ~500ms; flush immediately on structural changes). `useOptimistic` is intentionally NOT used per keystroke — each keystroke would be its own transition and the optimistic value would churn. See [useNotes.ts](src/dashboard/widgets/notes/useNotes.ts) which combines both patterns.
+- **Hydration**: on mount, the hook calls `get…Action` once and seeds `useState`; a local `hydrated` flag prevents re-fetching.
 
 ### Shared (per-user) widget data
 
@@ -103,7 +104,8 @@ Some widgets surface a per-user **library** that's the same across every instanc
 - Storage uses normal user-scoped tables — **not** keyed by `widgetInstanceId`. See [src/lib/dal/cheatsheet.ts](src/lib/dal/cheatsheet.ts).
 - CRUD UI lives on a dedicated `/settings/<widget>` page (signed-in users, not admin-only), **not** in the widget config dialog. See [src/app/settings/cheatsheet/](src/app/settings/cheatsheet/).
 - Per-instance config (e.g. which tags become filter buttons in *this* cheatsheet) lives in a config dialog opened from a gear icon on the widget itself, and is keyed by `widgetInstanceId` in its own table. See [src/dashboard/widgets/cheatsheet/config/ConfigPanel.tsx](src/dashboard/widgets/cheatsheet/config/ConfigPanel.tsx) and the `cheatsheet_widget_config` table.
-- The widget's zustand store has two slices: a single user-global slice with one `libraryHydrated` flag, plus the usual per-instance slice keyed by `widgetInstanceId`. See [src/dashboard/widgets/cheatsheet/cheatsheetStore.ts](src/dashboard/widgets/cheatsheet/cheatsheetStore.ts).
+- Shared library state lives in a per-widget React Context provider exported from the widget directory and registered via `provider:` on `registerWidget(...)`. The dashboard grid composes the provider around the grid whenever any instance of the widget type is mounted. See [cheatsheet/libraryContext.tsx](src/dashboard/widgets/cheatsheet/libraryContext.tsx) — it hydrates once and is consumed by every cheatsheet instance via `useCheatsheetLibrary()`.
+- Per-instance widget state should live in `useState` inside the widget component (or its `use<Name>` hook). If a child dialog (e.g. the config panel) needs the same state, pass it down via props — do NOT call the per-instance hook twice from different subtrees, since each call would get its own `useState`.
 - The global `WidgetConfigDialog` is per-widget-*type* (not per-instance), so don't use its `configComponent` slot for per-instance settings — host your own `Dialog` inside the widget instead.
 
 ## Widget interactivity vs. lock
@@ -120,7 +122,7 @@ The dashboard has a global `locked` flag. When `locked === false`, [BaseWidget](
 
 - Path alias: `@/` → `src/`.
 - Styling: Tailwind v4 (no `tailwind.config.*` — config lives in `globals.css`).
-- State: zustand. Stores are plain `create(...)` — no `persist` middleware; persistence is hand-rolled (localStorage write + debounced server action) so we keep one source of truth per slice.
+- State: the dashboard layout (instances, grid, lock) uses a single zustand store at [src/dashboard/store/dashboardStore.ts](src/dashboard/store/dashboardStore.ts). Everything else uses React state — per-instance widget state via `useState`, discrete mutations via `useOptimistic` + `useTransition`, shared per-user state via a React Context provider registered through the widget registry. Do not add new zustand stores; see "Widget data ownership" below.
 - Forms: react-hook-form + `@hookform/resolvers` + zod.
 - Icons: `lucide-react`.
 - DB: Drizzle ORM. Schema in [src/lib/db/schema.ts](src/lib/db/schema.ts). Migration commands: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:push`, `pnpm db:studio`.

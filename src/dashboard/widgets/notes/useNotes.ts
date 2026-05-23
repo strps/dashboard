@@ -1,7 +1,6 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useOptimistic, useState, useTransition } from "react";
 
 import { getNoteAction, saveNoteAction } from "./actions";
-import { useNotesStore } from "./notesStore";
 import type { NoteBlock } from "./schemas";
 
 const DEBOUNCE_MS = 500;
@@ -17,20 +16,31 @@ function scheduleSave(id: string, blocks: NoteBlock[]) {
   saveTimers.set(id, timer);
 }
 
-function saveNow(id: string, blocks: NoteBlock[]) {
+function cancelDebouncedSave(id: string) {
   const existing = saveTimers.get(id);
   if (existing) {
     clearTimeout(existing);
     saveTimers.delete(id);
   }
-  saveNoteAction(id, blocks).catch(() => {});
+}
+
+type StructuralAction =
+  | { type: "set"; blocks: NoteBlock[] };
+
+function blocksReducer(_state: NoteBlock[], action: StructuralAction): NoteBlock[] {
+  return action.blocks;
 }
 
 export function useNotes(id: string) {
-  const blocks = useNotesStore((s) => s.notes[id]) ?? EMPTY;
-  const hydrated = useNotesStore((s) => s.hydrated[id] ?? false);
-  const setBlocks = useNotesStore((s) => s.setBlocks);
-  const setHydrated = useNotesStore((s) => s.setHydrated);
+  const [blocks, setBlocks] = useState<NoteBlock[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  const [optimisticBlocks, applyOptimistic] = useOptimistic(
+    blocks,
+    blocksReducer,
+  );
+
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     if (hydrated) return;
@@ -38,66 +48,79 @@ export function useNotes(id: string) {
     getNoteAction(id)
       .then((remote) => {
         if (cancelled) return;
-        setHydrated(id, remote ?? []);
+        setBlocks(remote ?? []);
+        setHydrated(true);
       })
       .catch(() => {
         if (cancelled) return;
-        setHydrated(id, []);
+        setHydrated(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [id, hydrated, setHydrated]);
+  }, [id, hydrated]);
+
+  const runStructural = useCallback(
+    (next: NoteBlock[]) => {
+      cancelDebouncedSave(id);
+      startTransition(async () => {
+        applyOptimistic({ type: "set", blocks: next });
+        try {
+          await saveNoteAction(id, next);
+          setBlocks(next);
+        } catch {
+          // optimistic state reverts when the transition ends
+        }
+      });
+    },
+    [id, applyOptimistic],
+  );
 
   const addTextBlock = useCallback(() => {
     const next: NoteBlock[] = [
-      ...blocks,
+      ...optimisticBlocks,
       { id: crypto.randomUUID(), type: "text", text: "" },
     ];
-    setBlocks(id, next);
-    saveNow(id, next);
-  }, [blocks, id, setBlocks]);
+    runStructural(next);
+  }, [optimisticBlocks, runStructural]);
 
   const addChecklistBlock = useCallback(() => {
     const next: NoteBlock[] = [
-      ...blocks,
+      ...optimisticBlocks,
       { id: crypto.randomUUID(), type: "checklist", text: "", checked: false },
     ];
-    setBlocks(id, next);
-    saveNow(id, next);
-  }, [blocks, id, setBlocks]);
+    runStructural(next);
+  }, [optimisticBlocks, runStructural]);
 
   const updateBlockText = useCallback(
     (blockId: string, text: string) => {
-      const next = blocks.map((b) =>
+      const next = optimisticBlocks.map((b) =>
         b.id === blockId ? { ...b, text } : b,
       );
-      setBlocks(id, next);
+      setBlocks(next);
       scheduleSave(id, next);
     },
-    [blocks, id, setBlocks],
+    [id, optimisticBlocks],
   );
 
   const toggleChecklistBlock = useCallback(
     (blockId: string) => {
-      const next = blocks.map((b) =>
+      const next = optimisticBlocks.map((b) =>
         b.id === blockId && b.type === "checklist"
           ? { ...b, checked: !b.checked }
           : b,
       );
-      setBlocks(id, next);
-      saveNow(id, next);
+      runStructural(next);
     },
-    [blocks, id, setBlocks],
+    [optimisticBlocks, runStructural],
   );
 
   const removeBlock = useCallback(
     (blockId: string) => {
-      const next = blocks.filter((b) => b.id !== blockId);
-      setBlocks(id, next);
-      saveNow(id, next);
+      const next = optimisticBlocks.filter((b) => b.id !== blockId);
+      runStructural(next);
     },
-    [blocks, id, setBlocks],
+    [optimisticBlocks, runStructural],
   );
 
   const insertBlockAfter = useCallback(
@@ -106,22 +129,21 @@ export function useNotes(id: string) {
         type === "text"
           ? { id: crypto.randomUUID(), type: "text", text: "" }
           : { id: crypto.randomUUID(), type: "checklist", text: "", checked: false };
-      const idx = blocks.findIndex((b) => b.id === blockId);
-      const insertAt = idx === -1 ? blocks.length : idx + 1;
+      const idx = optimisticBlocks.findIndex((b) => b.id === blockId);
+      const insertAt = idx === -1 ? optimisticBlocks.length : idx + 1;
       const next = [
-        ...blocks.slice(0, insertAt),
+        ...optimisticBlocks.slice(0, insertAt),
         newBlock,
-        ...blocks.slice(insertAt),
+        ...optimisticBlocks.slice(insertAt),
       ];
-      setBlocks(id, next);
-      saveNow(id, next);
+      runStructural(next);
       return newBlock.id;
     },
-    [blocks, id, setBlocks],
+    [optimisticBlocks, runStructural],
   );
 
   return {
-    blocks,
+    blocks: optimisticBlocks,
     hydrated,
     addTextBlock,
     addChecklistBlock,
@@ -131,5 +153,3 @@ export function useNotes(id: string) {
     insertBlockAfter,
   };
 }
-
-const EMPTY: NoteBlock[] = [];

@@ -2,10 +2,14 @@
 
 import {
   createActivity,
+  createActivityTag,
   deleteActivity,
+  deleteActivityTag,
   listActivities,
+  listActivityTags,
   reorderActivities,
   updateActivity,
+  updateActivityTag,
 } from "@/lib/dal/activities";
 import {
   getOpenEntry,
@@ -17,17 +21,21 @@ import {
   type Activity,
   type ActivitySelectorState,
   type ActivityFormValues,
+  type ActivityTag,
+  type ActivityTagInput,
   type OpenEntry,
   activityFormSchema,
+  activityTagInputSchema,
   reorderSchema,
 } from "./schemas";
 
 export async function getActivitySelectorStateAction(): Promise<ActivitySelectorState> {
-  const [activities, open] = await Promise.all([
+  const [activities, open, tags] = await Promise.all([
     listActivities(),
     getOpenEntry(),
+    listActivityTags(),
   ]);
-  return { activities, open };
+  return { activities, open, tags };
 }
 
 export async function createActivityAction(
@@ -64,4 +72,23 @@ export async function startActivityAction(
 
 export async function stopActivityAction(): Promise<void> {
   await stopEntry();
+}
+
+export async function createActivityTagAction(
+  input: ActivityTagInput,
+): Promise<ActivityTag> {
+  const parsed = activityTagInputSchema.parse(input);
+  return createActivityTag(parsed);
+}
+
+export async function updateActivityTagAction(
+  id: string,
+  input: ActivityTagInput,
+): Promise<ActivityTag> {
+  const parsed = activityTagInputSchema.parse(input);
+  return updateActivityTag(id, parsed);
+}
+
+export async function deleteActivityTagAction(id: string): Promise<void> {
+  await deleteActivityTag(id);
 }

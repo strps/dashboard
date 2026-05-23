@@ -6,13 +6,14 @@ import { useActivitySelector } from "../useActivitySelector";
 import {
   type Activity,
   type ActivityFormValues,
+  type ActivityTag,
   activityFormSchema,
 } from "../schemas";
 
 const DEFAULT_COLOR = "#10b981";
 
 export function ActivitiesTab() {
-  const { activities, createActivity, updateActivity, deleteActivity, reorderActivities } =
+  const { activities, tags, createActivity, updateActivity, deleteActivity, reorderActivities } =
     useActivitySelector();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -77,7 +78,8 @@ export function ActivitiesTab() {
             >
               {editingId === a.id ? (
                 <ActivityForm
-                  defaultValues={{ name: a.name, color: a.color }}
+                  defaultValues={{ name: a.name, color: a.color, tagIds: a.tagIds }}
+                  tags={tags}
                   submitLabel="Save"
                   onCancel={() => setEditingId(null)}
                   onSubmit={async (values) => {
@@ -88,6 +90,7 @@ export function ActivitiesTab() {
               ) : (
                 <ActivityRow
                   activity={a}
+                  tags={tags}
                   onEdit={() => setEditingId(a.id)}
                   onDelete={async () => {
                     if (!confirm(`Delete "${a.name}"?`)) return;
@@ -100,12 +103,13 @@ export function ActivitiesTab() {
         </ul>
       )}
 
-      <div className="rounded-md border border-dashed border-white/10 bg-white/[0.02] p-2">
+      <div className="rounded-md border border-dashed border-white/10 bg-white/2 p-2">
         <p className="text-[10px] uppercase tracking-wider text-white/30 px-1 pb-1">
           Add activity
         </p>
         <ActivityForm
-          defaultValues={{ name: "", color: DEFAULT_COLOR }}
+          defaultValues={{ name: "", color: DEFAULT_COLOR, tagIds: [] }}
+          tags={tags}
           submitLabel="Add"
           onSubmit={async (values) => {
             await createActivity(values);
@@ -119,13 +123,16 @@ export function ActivitiesTab() {
 
 function ActivityRow({
   activity,
+  tags,
   onEdit,
   onDelete,
 }: {
   activity: Activity;
+  tags: ActivityTag[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const activityTags = tags.filter((t) => activity.tagIds.includes(t.id));
   return (
     <div className="flex items-center gap-2 px-2 py-2">
       <span className="text-white/30 cursor-grab select-none">⋮⋮</span>
@@ -133,7 +140,25 @@ function ActivityRow({
         className="w-3 h-3 rounded-full shrink-0"
         style={{ backgroundColor: activity.color }}
       />
-      <span className="flex-1 text-sm text-white/80 truncate">{activity.name}</span>
+      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <span className="text-sm text-white/80 truncate">{activity.name}</span>
+        {activityTags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {activityTags.map((t) => (
+              <span
+                key={t.id}
+                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/50"
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: t.color ?? "#6366f1" }}
+                />
+                {t.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       <button
         type="button"
         className="text-xs text-white/40 hover:text-white/80 px-2 py-1"
@@ -154,26 +179,40 @@ function ActivityRow({
 
 function ActivityForm({
   defaultValues,
+  tags,
   submitLabel,
   onSubmit,
   onCancel,
   resetOnSubmit,
 }: {
   defaultValues: ActivityFormValues;
+  tags: ActivityTag[];
   submitLabel: string;
   onSubmit: (values: ActivityFormValues) => Promise<void>;
   onCancel?: () => void;
   resetOnSubmit?: boolean;
 }) {
+  const methods = useForm<ActivityFormValues>({
+    resolver: zodResolver(activityFormSchema),
+    defaultValues,
+  });
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<ActivityFormValues>({
-    resolver: zodResolver(activityFormSchema),
-    defaultValues,
-  });
+  } = methods;
+
+  const selectedTagIds = watch("tagIds");
+
+  const toggleTag = (tagId: string) => {
+    const next = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
+    setValue("tagIds", next);
+  };
 
   return (
     <form
@@ -196,6 +235,32 @@ function ActivityForm({
           {...register("name")}
         />
       </div>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-1">
+          {tags.map((t) => {
+            const selected = selectedTagIds.includes(t.id);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => toggleTag(t.id)}
+                className={[
+                  "inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full border transition-colors",
+                  selected
+                    ? "border-white/30 bg-white/15 text-white/80"
+                    : "border-white/10 bg-white/5 text-white/40 hover:border-white/20 hover:text-white/60",
+                ].join(" ")}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: t.color ?? "#6366f1" }}
+                />
+                {t.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {(errors.name || errors.color) && (
         <p className="text-[11px] text-rose-300/80">
           {errors.name?.message ?? errors.color?.message}

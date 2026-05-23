@@ -18,10 +18,17 @@ import {
   type CheatsheetTagInput,
 } from "@/dashboard/widgets/cheatsheet/schemas";
 
+import type {
+  EntryOptimisticAction,
+  TagOptimisticAction,
+} from "./CheatsheetManager";
+
 interface TagsTabProps {
   tags: CheatsheetTag[];
   setTags: React.Dispatch<React.SetStateAction<CheatsheetTag[]>>;
   setEntries: React.Dispatch<React.SetStateAction<CheatsheetEntry[]>>;
+  applyTagOptimistic: (action: TagOptimisticAction) => void;
+  applyEntryOptimistic: (action: EntryOptimisticAction) => void;
 }
 
 interface TagNode {
@@ -66,7 +73,13 @@ function descendantsOf(tagId: string, tags: CheatsheetTag[]): Set<string> {
   return result;
 }
 
-export function TagsTab({ tags, setTags, setEntries }: TagsTabProps) {
+export function TagsTab({
+  tags,
+  setTags,
+  setEntries,
+  applyTagOptimistic,
+  applyEntryOptimistic,
+}: TagsTabProps) {
   const [editing, setEditing] = useState<CheatsheetTag | null>(null);
   const [creating, setCreating] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -82,19 +95,25 @@ export function TagsTab({ tags, setTags, setEntries }: TagsTabProps) {
       return;
     }
     startTransition(async () => {
-      await deleteTagAction(id);
-      setTags((prev) =>
-        prev
-          .filter((t) => t.id !== id)
-          .map((t) => (t.parentId === id ? { ...t, parentId: null } : t)),
-      );
-      setEntries((prev) =>
-        prev.map((e) =>
-          e.tagIds.includes(id)
-            ? { ...e, tagIds: e.tagIds.filter((t) => t !== id) }
-            : e,
-        ),
-      );
+      applyTagOptimistic({ type: "delete", id });
+      applyEntryOptimistic({ type: "strip-tag", tagId: id });
+      try {
+        await deleteTagAction(id);
+        setTags((prev) =>
+          prev
+            .filter((t) => t.id !== id)
+            .map((t) => (t.parentId === id ? { ...t, parentId: null } : t)),
+        );
+        setEntries((prev) =>
+          prev.map((e) =>
+            e.tagIds.includes(id)
+              ? { ...e, tagIds: e.tagIds.filter((t) => t !== id) }
+              : e,
+          ),
+        );
+      } catch {
+        // optimistic updates discarded on transition end
+      }
     });
   };
 
@@ -148,6 +167,12 @@ export function TagsTab({ tags, setTags, setEntries }: TagsTabProps) {
             onCancel={() => setCreating(false)}
             onSubmit={(values) =>
               startTransition(async () => {
+                const placeholder: CheatsheetTag = {
+                  id: `optimistic-${crypto.randomUUID()}`,
+                  ...values,
+                };
+                applyTagOptimistic({ type: "create", tag: placeholder });
+                setCreating(false);
                 try {
                   const created = await createTagAction(values);
                   setTags((prev) =>
@@ -155,9 +180,8 @@ export function TagsTab({ tags, setTags, setEntries }: TagsTabProps) {
                       a.name.localeCompare(b.name),
                     ),
                   );
-                  setCreating(false);
                 } catch {
-                  // keep open
+                  // optimistic add discarded on transition end
                 }
               })
             }
@@ -178,14 +202,16 @@ export function TagsTab({ tags, setTags, setEntries }: TagsTabProps) {
             onCancel={() => setEditing(null)}
             onSubmit={(values) =>
               startTransition(async () => {
+                const optimistic: CheatsheetTag = { ...editing, ...values };
+                applyTagOptimistic({ type: "update", tag: optimistic });
+                setEditing(null);
                 try {
                   const updated = await updateTagAction(editing.id, values);
                   setTags((prev) =>
                     prev.map((t) => (t.id === updated.id ? updated : t)),
                   );
-                  setEditing(null);
                 } catch {
-                  // keep open
+                  // optimistic update discarded on transition end
                 }
               })
             }
