@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Lock, Unlock, Plus, ChevronDown, LogOut, Settings } from "lucide-react";
-import { WIDGET_REGISTRY } from "../widgets";
+import { WIDGET_REGISTRY } from "../modules";
 import type { WidgetType } from "../store/dashboardStore";
 import { authClient } from "@/lib/auth-client";
 

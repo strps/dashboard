@@ -5,7 +5,7 @@ import GridLayout, { verticalCompactor } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import { DashboardHeader } from "./DashboardHeader";
 import { useDashboardStore } from "../store/dashboardStore";
-import { WIDGET_REGISTRY } from "../widgets";
+import { WIDGET_REGISTRY } from "../modules";
 import type { WidgetType } from "../store/dashboardStore";
 
 const GRID_WIDTH = 1200;

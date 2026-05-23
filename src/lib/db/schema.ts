@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -9,13 +8,11 @@ import {
   primaryKey,
   text,
   timestamp,
-  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 import type { LayoutItem } from "react-grid-layout";
 
-import type { FilterButton } from "@/dashboard/widgets/cheatsheet/schemas";
-import type { NoteBlock } from "@/dashboard/widgets/notes/schemas";
+import type { NoteBlock } from "@/dashboard/modules/notes/schemas";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -77,28 +74,13 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const activity = pgTable(
-  "activity",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    color: text("color").notNull(),
-    order: integer("order").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (t) => [index("activity_user_order_idx").on(t.userId, t.order)],
-);
-
 export const dashboardLayout = pgTable("dashboard_layout", {
   userId: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   layout: jsonb("layout").$type<LayoutItem[]>().notNull(),
   instances: jsonb("instances")
-    .$type<{ id: string; type: string }[]>()
+    .$type<{ id: string; type: string; config?: unknown }[]>()
     .notNull(),
   locked: boolean("locked").notNull().default(true),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -173,79 +155,3 @@ export const cheatsheetEntryTag = pgTable(
   ],
 );
 
-export const cheatsheetWidgetConfig = pgTable(
-  "cheatsheet_widget_config",
-  {
-    widgetInstanceId: text("widget_instance_id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    filterButtons: jsonb("filter_buttons")
-      .$type<FilterButton[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (t) => [index("cheatsheet_widget_config_user_idx").on(t.userId)],
-);
-
-export const activityTag = pgTable(
-  "activity_tag",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    parentId: text("parent_id"),
-    color: text("color"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  },
-  (t) => [
-    index("activity_tag_user_idx").on(t.userId),
-    foreignKey({
-      columns: [t.parentId],
-      foreignColumns: [t.id],
-      name: "activity_tag_parent_fk",
-    }).onDelete("set null"),
-  ],
-);
-
-export const activityActivityTag = pgTable(
-  "activity_activity_tag",
-  {
-    activityId: text("activity_id")
-      .notNull()
-      .references(() => activity.id, { onDelete: "cascade" }),
-    tagId: text("tag_id")
-      .notNull()
-      .references(() => activityTag.id, { onDelete: "cascade" }),
-  },
-  (t) => [
-    primaryKey({ columns: [t.activityId, t.tagId] }),
-    index("activity_activity_tag_tag_idx").on(t.tagId),
-  ],
-);
-
-export const timeEntry = pgTable(
-  "time_entry",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    activityId: text("activity_id")
-      .notNull()
-      .references(() => activity.id, { onDelete: "cascade" }),
-    startedAt: timestamp("started_at").notNull().defaultNow(),
-    endedAt: timestamp("ended_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  },
-  (t) => [
-    index("time_entry_user_started_idx").on(t.userId, t.startedAt),
-    uniqueIndex("time_entry_one_open_per_user")
-      .on(t.userId)
-      .where(sql`${t.endedAt} IS NULL`),
-  ],
-);

@@ -10,7 +10,7 @@ import { verifySession } from "./session";
 
 export interface DashboardLayoutRecord {
   layout: LayoutItem[];
-  instances: { id: string; type: string }[];
+  instances: { id: string; type: string; config?: unknown }[];
   locked: boolean;
 }
 

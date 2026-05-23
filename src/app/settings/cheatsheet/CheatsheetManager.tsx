@@ -5,7 +5,7 @@ import { useOptimistic, useState } from "react";
 import type {
   CheatsheetEntry,
   CheatsheetTag,
-} from "@/dashboard/widgets/cheatsheet/schemas";
+} from "@/dashboard/modules/cheatsheet/schemas";
 
 import { EntriesTab } from "./EntriesTab";
 import { TagsTab } from "./TagsTab";

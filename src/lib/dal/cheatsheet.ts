@@ -7,15 +7,13 @@ import {
   cheatsheetEntry,
   cheatsheetEntryTag,
   cheatsheetTag,
-  cheatsheetWidgetConfig,
 } from "@/lib/db/schema";
 import type {
   CheatsheetEntry,
   CheatsheetEntryInput,
   CheatsheetTag,
   CheatsheetTagInput,
-  FilterButton,
-} from "@/dashboard/widgets/cheatsheet/schemas";
+} from "@/dashboard/modules/cheatsheet/schemas";
 
 import { verifySession } from "./session";
 
@@ -273,44 +271,4 @@ export async function deleteTag(id: string): Promise<void> {
   await db
     .delete(cheatsheetTag)
     .where(and(eq(cheatsheetTag.id, id), eq(cheatsheetTag.userId, userId)));
-}
-
-export async function getWidgetConfig(
-  widgetInstanceId: string,
-): Promise<FilterButton[]> {
-  const { userId } = await verifySession();
-  const [row] = await db
-    .select()
-    .from(cheatsheetWidgetConfig)
-    .where(
-      and(
-        eq(cheatsheetWidgetConfig.widgetInstanceId, widgetInstanceId),
-        eq(cheatsheetWidgetConfig.userId, userId),
-      ),
-    )
-    .limit(1);
-  return row?.filterButtons ?? [];
-}
-
-export async function saveWidgetConfig(
-  widgetInstanceId: string,
-  filterButtons: FilterButton[],
-): Promise<void> {
-  const { userId } = await verifySession();
-  await db
-    .insert(cheatsheetWidgetConfig)
-    .values({
-      widgetInstanceId,
-      userId,
-      filterButtons,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: cheatsheetWidgetConfig.widgetInstanceId,
-      set: {
-        filterButtons,
-        updatedAt: new Date(),
-      },
-      where: eq(cheatsheetWidgetConfig.userId, userId),
-    });
 }

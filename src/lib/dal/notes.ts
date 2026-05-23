@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { note } from "@/lib/db/schema";
-import type { NoteBlock } from "@/dashboard/widgets/notes/schemas";
+import type { NoteBlock } from "@/dashboard/modules/notes/schemas";
 
 import { verifySession } from "./session";
 

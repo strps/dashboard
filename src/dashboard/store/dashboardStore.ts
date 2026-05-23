@@ -12,11 +12,13 @@ export type WidgetType =
   | "notes"
   | "weather"
   | "activitySelector"
+  | "calendar"
   | "cheatsheet";
 
-export interface WidgetInstance {
+export interface WidgetInstance<TConfig = unknown> {
   id: string;
   type: WidgetType;
+  config?: TConfig;
 }
 
 const DEFAULT_SIZES: Record<WidgetType, { w: number; h: number }> = {
@@ -25,6 +27,7 @@ const DEFAULT_SIZES: Record<WidgetType, { w: number; h: number }> = {
   notes:            { w: 4, h: 4 },
   weather:          { w: 3, h: 3 },
   activitySelector: { w: 3, h: 3 },
+  calendar:         { w: 6, h: 5 },
   cheatsheet:       { w: 5, h: 5 },
 };
 
@@ -79,6 +82,7 @@ interface DashboardState {
   addWidget: (type: WidgetType) => void;
   removeWidget: (id: string) => void;
   setLayout: (layout: LayoutItem[]) => void;
+  setWidgetConfig: (id: string, config: unknown) => void;
   toggleLocked: () => void;
   hydrateFromServer: () => Promise<void>;
 }
@@ -135,6 +139,15 @@ export const useDashboardStore = create<DashboardState>((set, get) => {
 
     setLayout: (layout) => {
       set({ layout });
+      persist();
+    },
+
+    setWidgetConfig: (id, config) => {
+      set((state) => ({
+        instances: state.instances.map((inst) =>
+          inst.id === id ? { ...inst, config } : inst,
+        ),
+      }));
       persist();
     },
 
