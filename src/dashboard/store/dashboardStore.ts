@@ -17,7 +17,8 @@ export type WidgetType =
   | "weather"
   | "activitySelector"
   | "calendar"
-  | "cheatsheet";
+  | "cheatsheet"
+  | "timeChart";
 
 export interface WidgetInstance<TConfig = unknown> {
   id: string;
@@ -46,6 +47,7 @@ const DEFAULT_SIZES: Record<WidgetType, { w: number; h: number }> = {
   activitySelector: { w: 3, h: 3 },
   calendar:         { w: 6, h: 5 },
   cheatsheet:       { w: 5, h: 5 },
+  timeChart:        { w: 5, h: 4 },
 };
 
 const DEFAULT_LAYOUT: LayoutItem[] = [

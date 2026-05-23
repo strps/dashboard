@@ -6,12 +6,13 @@ import { TagsTab } from "./config-pages/TagsTab";
 import { activitySelectorWidget } from "./widgets/activity-selector/ActivitySelectorWidget";
 import { calendarWidget } from "./widgets/calendar/CalendarWidget";
 import { clockWidget } from "./widgets/clock/ClockWidget";
+import { timeChartWidget } from "./widgets/time-chart/TimeChartWidget";
 
 defineModule({
   id: "time-management",
   label: "Time management",
   icon: Clock,
-  widgets: [clockWidget, activitySelectorWidget, calendarWidget],
+  widgets: [clockWidget, activitySelectorWidget, calendarWidget, timeChartWidget],
   configPages: [
     {
       slug: "activities",
