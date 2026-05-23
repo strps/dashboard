@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock, Unlock, Plus, ChevronDown, LogOut, Settings } from "lucide-react";
+import { Lock, Unlock, Plus, ChevronDown, LogOut, Settings, X } from "lucide-react";
 import { WIDGET_REGISTRY } from "../modules";
-import type { WidgetType } from "../store/dashboardStore";
+import type { WidgetType, DashboardMeta } from "../store/dashboardStore";
 import { authClient } from "@/lib/auth-client";
 
 interface DashboardHeaderProps {
@@ -13,9 +13,28 @@ interface DashboardHeaderProps {
   isAdmin: boolean;
   userName: string;
   userEmail: string;
+  dashboards: DashboardMeta[];
+  activeDashboardId: string | null;
+  onSwitchDashboard: (id: string) => void;
+  onAddDashboard: () => void;
+  onDeleteDashboard: (id: string) => void;
+  onRenameDashboard: (id: string, name: string) => void;
 }
 
-export function DashboardHeader({ locked, onToggleLock, onAddWidget, isAdmin, userName, userEmail }: DashboardHeaderProps) {
+export function DashboardHeader({
+  locked,
+  onToggleLock,
+  onAddWidget,
+  isAdmin,
+  userName,
+  userEmail,
+  dashboards,
+  activeDashboardId,
+  onSwitchDashboard,
+  onAddDashboard,
+  onDeleteDashboard,
+  onRenameDashboard,
+}: DashboardHeaderProps) {
   const [addOpen, setAddOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const addRef = useRef<HTMLDivElement>(null);
@@ -41,9 +60,17 @@ export function DashboardHeader({ locked, onToggleLock, onAddWidget, isAdmin, us
   const initials = userName.trim().charAt(0).toUpperCase() || userEmail.charAt(0).toUpperCase();
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-      <h1 className="text-sm font-medium tracking-wide text-white/70">Dashboard</h1>
-      <div className="flex items-center gap-2">
+    <header className="flex items-center gap-4 px-6 py-4 border-b border-white/10">
+      <TabStrip
+        dashboards={dashboards}
+        activeDashboardId={activeDashboardId}
+        onSwitch={onSwitchDashboard}
+        onAdd={onAddDashboard}
+        onDelete={onDeleteDashboard}
+        onRename={onRenameDashboard}
+      />
+
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onToggleLock}
           className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
@@ -140,5 +167,92 @@ export function DashboardHeader({ locked, onToggleLock, onAddWidget, isAdmin, us
         </div>
       </div>
     </header>
+  );
+}
+
+interface TabStripProps {
+  dashboards: DashboardMeta[];
+  activeDashboardId: string | null;
+  onSwitch: (id: string) => void;
+  onAdd: () => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+}
+
+function TabStrip({ dashboards, activeDashboardId, onSwitch, onAdd, onDelete, onRename }: TabStripProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId) inputRef.current?.focus();
+  }, [editingId]);
+
+  function startEdit(tab: DashboardMeta, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingId(tab.id);
+    setEditValue(tab.name);
+  }
+
+  function commitEdit() {
+    if (editingId && editValue.trim()) {
+      onRename(editingId, editValue.trim());
+    }
+    setEditingId(null);
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-1 overflow-x-auto min-w-0">
+      {dashboards.map((tab) => (
+        <div
+          key={tab.id}
+          className={`group flex items-center gap-1 px-3 py-1.5 rounded-md text-xs cursor-pointer select-none transition-colors shrink-0 ${
+            tab.id === activeDashboardId
+              ? "bg-white/15 text-white"
+              : "text-white/50 hover:bg-white/10 hover:text-white/80"
+          }`}
+          onClick={() => {
+            if (editingId !== tab.id) onSwitch(tab.id);
+          }}
+          onDoubleClick={(e) => startEdit(tab, e)}
+        >
+          {editingId === tab.id ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+                if (e.key === "Escape") setEditingId(null);
+              }}
+              className="bg-transparent outline-none w-24 text-white text-xs"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span>{tab.name}</span>
+          )}
+          {dashboards.length > 1 && (
+            <button
+              className="opacity-0 group-hover:opacity-60 hover:opacity-100! ml-0.5 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(tab.id);
+              }}
+              title="Delete dashboard"
+            >
+              <X size={10} />
+            </button>
+          )}
+        </div>
+      ))}
+      <button
+        onClick={onAdd}
+        className="p-1.5 rounded-md text-white/40 hover:text-white/80 hover:bg-white/10 transition-colors shrink-0"
+        title="New dashboard"
+      >
+        <Plus size={12} />
+      </button>
+    </div>
   );
 }

@@ -74,10 +74,26 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const dashboard = pgTable(
+  "dashboard",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type").notNull().default("widgets"),
+    order: integer("order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("dashboard_user_order_idx").on(t.userId, t.order)],
+);
+
 export const dashboardLayout = pgTable("dashboard_layout", {
-  userId: text("user_id")
+  dashboardId: text("dashboard_id")
     .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
+    .references(() => dashboard.id, { onDelete: "cascade" }),
   layout: jsonb("layout").$type<LayoutItem[]>().notNull(),
   instances: jsonb("instances")
     .$type<{ id: string; type: string; config?: unknown }[]>()
