@@ -82,6 +82,7 @@ export function useCalendar(instanceId: string): UseCalendarResult {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [entries, setEntries] = useState<CalendarRangeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const range = useMemo(
     () => computeRange(view, anchorDate, daysShown, weekStartsOn),
@@ -107,7 +108,15 @@ export function useCalendar(instanceId: string): UseCalendarResult {
     return () => {
       cancelled = true;
     };
-  }, [fromMs, toMs]);
+  }, [fromMs, toMs, refreshKey]);
+
+  useEffect(() => {
+    function onEntryChanged() {
+      setRefreshKey((k) => k + 1);
+    }
+    window.addEventListener("time-entry-changed", onEntryChanged);
+    return () => window.removeEventListener("time-entry-changed", onEntryChanged);
+  }, []);
 
   const configRef = useRef(config);
   configRef.current = config;

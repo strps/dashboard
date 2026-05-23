@@ -150,6 +150,7 @@ export function useActivitySelector() {
             const next = await startActivityAction(activityId);
             setOpen(next);
           }
+          window.dispatchEvent(new CustomEvent("time-entry-changed"));
         },
       ),
     [runOptimistic, applyOpenOptimistic],
