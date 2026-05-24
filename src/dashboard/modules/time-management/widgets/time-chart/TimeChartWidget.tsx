@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
-  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,9 +21,58 @@ import {
   type TimeChartConfig,
 } from "./schemas";
 import { useTimeChart } from "./useTimeChart";
+import type { ChartSeries } from "./useTimeChart";
 
 function stop(e: { stopPropagation: () => void }) {
   e.stopPropagation();
+}
+
+function CustomXAxisTick({
+  x,
+  y,
+  payload,
+  series,
+  bucketData,
+}: {
+  x?: number | string;
+  y?: number | string;
+  payload?: { value: string };
+  series: ChartSeries[];
+  bucketData: Map<string, Map<string, number>>;
+}) {
+  if (x === undefined || y === undefined || !payload) return null;
+
+  const inner = bucketData.get(payload.value);
+  const items = series
+    .map((s) => ({ ...s, hours: inner?.get(s.id) ?? 0 }))
+    .filter((s) => s.hours > 0);
+
+  return (
+    <g transform={`translate(${Number(x)},${Number(y)})`}>
+      <text x={0} y={0} dy={12} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize={10}>
+        {payload.value}
+      </text>
+      {items.map((item, i) => (
+        <g key={item.id} transform={`translate(0, ${20 + i * 13})`}>
+          <rect
+            x={-22}
+            y={-6}
+            width={5}
+            height={5}
+            rx={1}
+            fill={item.color}
+            fillOpacity={0.85}
+          />
+          <text x={-15} y={0} textAnchor="start" fill="rgba(255,255,255,0.35)" fontSize={8}>
+            {item.label.length > 7 ? item.label.slice(0, 7) + "…" : item.label}
+          </text>
+          <text x={26} y={0} textAnchor="end" fill="rgba(255,255,255,0.55)" fontSize={8}>
+            {formatHours(item.hours)}
+          </text>
+        </g>
+      ))}
+    </g>
+  );
 }
 
 function formatHours(h: number): string {
@@ -73,24 +121,46 @@ function ConfigDialog({ config, updateConfig, tags }: ConfigDialogProps) {
       </div>
 
       <div>
-        <div className="text-xs text-white/50 uppercase tracking-widest mb-2">Date range</div>
+        <div className="text-xs text-white/50 uppercase tracking-widest mb-2">View</div>
         <div className="flex gap-2">
-          {(["7d", "30d", "90d"] as const).map((r) => (
+          {(["week", "months"] as const).map((m) => (
             <button
-              key={r}
+              key={m}
               type="button"
-              onClick={() => updateConfig({ dateRange: r })}
+              onClick={() => updateConfig({ viewMode: m })}
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                config.dateRange === r
+                config.viewMode === m
                   ? "bg-white/15 border-white/30 text-white"
                   : "border-white/10 text-white/50 hover:text-white/70 hover:border-white/20"
               }`}
             >
-              {r === "7d" ? "7 days" : r === "30d" ? "30 days" : "90 days"}
+              {m === "week" ? "By week" : "By month"}
             </button>
           ))}
         </div>
       </div>
+
+      {config.viewMode === "months" && (
+        <div>
+          <div className="text-xs text-white/50 uppercase tracking-widest mb-2">Months back</div>
+          <div className="flex gap-2">
+            {([3, 6, 12] as const).map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => updateConfig({ monthsBack: n })}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  config.monthsBack === n
+                    ? "bg-white/15 border-white/30 text-white"
+                    : "border-white/10 text-white/50 hover:text-white/70 hover:border-white/20"
+                }`}
+              >
+                {n}m
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {tags.length > 0 && (
         <div>
@@ -108,10 +178,7 @@ function ConfigDialog({ config, updateConfig, tags }: ConfigDialogProps) {
             {tags.map((tag) => {
               const checked = allSelected || config.selectedTagIds.includes(tag.id);
               return (
-                <label
-                  key={tag.id}
-                  className="flex items-center gap-2.5 cursor-pointer group"
-                >
+                <label key={tag.id} className="flex items-center gap-2.5 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={checked}
@@ -120,15 +187,19 @@ function ConfigDialog({ config, updateConfig, tags }: ConfigDialogProps) {
                   />
                   <span
                     className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                      checked
-                        ? "border-transparent"
-                        : "border-white/20 bg-transparent"
+                      checked ? "border-transparent" : "border-white/20 bg-transparent"
                     }`}
                     style={checked ? { backgroundColor: tag.color ?? "#6366f1" } : undefined}
                   >
                     {checked && (
                       <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M1 3.5L3.5 6L8 1"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     )}
                   </span>
@@ -151,13 +222,109 @@ function ConfigDialog({ config, updateConfig, tags }: ConfigDialogProps) {
   );
 }
 
+function StackedTooltip({
+  active,
+  payload,
+  label,
+  series,
+}: {
+  active?: boolean;
+  payload?: { dataKey: string; value: number }[];
+  label?: string;
+  series: ChartSeries[];
+}) {
+  if (!active || !payload?.length) return null;
+
+  const seriesById = new Map(series.map((s) => [s.id, s]));
+  const items = payload
+    .map((p) => ({ ...p, meta: seriesById.get(p.dataKey) }))
+    .filter((p) => p.meta && p.value > 0)
+    .reverse();
+
+  if (items.length === 0) return null;
+
+  const total = items.reduce((s, p) => s + p.value, 0);
+
+  return (
+    <div
+      style={{
+        background: "rgba(15,15,15,0.95)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: "8px",
+        color: "#fff",
+        fontSize: "12px",
+        padding: "8px 10px",
+        minWidth: "120px",
+      }}
+    >
+      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "11px", marginBottom: "6px" }}>
+        {label}
+      </div>
+      {items.map((p) => (
+        <div key={p.dataKey} style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "2px",
+              backgroundColor: p.meta!.color,
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ color: "rgba(255,255,255,0.7)", flex: 1 }}>{p.meta!.label}</span>
+          <span style={{ color: "#fff", fontVariantNumeric: "tabular-nums" }}>
+            {formatHours(p.value)}
+          </span>
+        </div>
+      ))}
+      {items.length > 1 && (
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+            marginTop: "4px",
+            paddingTop: "4px",
+            display: "flex",
+            justifyContent: "space-between",
+            color: "rgba(255,255,255,0.5)",
+          }}
+        >
+          <span>Total</span>
+          <span style={{ color: "#fff" }}>{formatHours(total)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TimeChartWidget({ id }: WidgetComponentProps) {
   const { locked, onRemove } = useWidget(id);
-  const { config, updateConfig, bars, tags, loading } = useTimeChart(id);
+  const { config, updateConfig, dataPoints, series, tags, loading, periodOffset, periodLabel, shiftPeriod, goToNow } = useTimeChart(id);
   const [configOpen, setConfigOpen] = useState(false);
 
   const disabled = !locked;
-  const hasFilter = config.selectedTagIds.length > 0;
+  const hasData = series.length > 0;
+
+  const bucketData = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    for (const dp of dataPoints) {
+      const inner = new Map<string, number>();
+      for (const [k, v] of Object.entries(dp)) {
+        if (k !== "label" && (v as number) > 0) inner.set(k, v as number);
+      }
+      map.set(dp.label as string, inner);
+    }
+    return map;
+  }, [dataPoints]);
+
+  const seriesTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const dp of dataPoints) {
+      for (const [k, v] of Object.entries(dp)) {
+        if (k !== "label") map.set(k, (map.get(k) ?? 0) + (v as number));
+      }
+    }
+    return map;
+  }, [dataPoints]);
 
   return (
     <BaseWidget
@@ -167,118 +334,113 @@ export function TimeChartWidget({ id }: WidgetComponentProps) {
       onConfigure={() => setConfigOpen(true)}
     >
       <div className="h-full w-full rounded-xl bg-white/5 flex flex-col">
-        {/* Header + controls */}
-        <div className="px-3 pt-2.5 pb-2 border-b border-white/10 flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mr-1">
+        {/* Header */}
+        <div className="px-3 pt-2.5 pb-2 border-b border-white/10 flex items-center gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30 mr-auto">
             Time
           </span>
-
-          {/* GroupBy toggle */}
-          <div className="flex gap-0.5">
-            {(["activity", "tag"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                disabled={disabled}
-                onMouseDown={stop}
-                onClick={() => updateConfig({ groupBy: mode })}
-                className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded transition-colors ${
-                  config.groupBy === mode
-                    ? "bg-white/15 text-white"
-                    : "text-white/40 hover:text-white/70"
-                } disabled:opacity-40 disabled:hover:text-white/40`}
-              >
-                {mode === "activity" ? "Activities" : "Tags"}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-3 w-px bg-white/15" />
-
-          {/* Date range */}
-          <div className="flex gap-0.5">
-            {(["7d", "30d", "90d"] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                disabled={disabled}
-                onMouseDown={stop}
-                onClick={() => updateConfig({ dateRange: r })}
-                className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded transition-colors ${
-                  config.dateRange === r
-                    ? "bg-white/15 text-white"
-                    : "text-white/40 hover:text-white/70"
-                } disabled:opacity-40 disabled:hover:text-white/40`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-
-          {hasFilter && (
-            <>
-              <div className="h-3 w-px bg-white/15" />
-              <span className="text-[10px] text-white/40">
-                {config.selectedTagIds.length} tag{config.selectedTagIds.length !== 1 ? "s" : ""}
-              </span>
-            </>
+          <button
+            type="button"
+            disabled={disabled}
+            onMouseDown={stop}
+            onClick={() => shiftPeriod(1)}
+            className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors disabled:opacity-40 rounded hover:bg-white/5"
+          >
+            ‹
+          </button>
+          <span className="text-[11px] text-white/50 min-w-20 text-center tabular-nums">
+            {periodLabel}
+          </span>
+          <button
+            type="button"
+            disabled={disabled || periodOffset === 0}
+            onMouseDown={stop}
+            onClick={() => shiftPeriod(-1)}
+            className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/60 transition-colors disabled:opacity-40 rounded hover:bg-white/5"
+          >
+            ›
+          </button>
+          {periodOffset > 0 && (
+            <button
+              type="button"
+              disabled={disabled}
+              onMouseDown={stop}
+              onClick={goToNow}
+              className="ml-1 text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-white/15 text-white/35 hover:text-white/60 hover:border-white/25 transition-colors disabled:opacity-40"
+            >
+              now
+            </button>
           )}
         </div>
 
         {/* Chart */}
-        <div className="flex-1 min-h-0 py-2">
-          {loading && bars.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-white/30 text-xs font-mono">
-              Loading…
-            </div>
-          ) : bars.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-white/30 text-xs">
-              No data for this period
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={bars}
-                layout="vertical"
-                margin={{ top: 2, right: 52, bottom: 2, left: 8 }}
-              >
-                <XAxis
-                  type="number"
-                  dataKey="hours"
-                  tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 9 }}
-                  tickFormatter={(v: number) => `${v.toFixed(0)}h`}
-                  axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
-                  tickLine={{ stroke: "rgba(255,255,255,0.08)" }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="label"
-                  width={88}
-                  tick={{ fill: "rgba(255,255,255,0.6)", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v: string) => v.length > 12 ? `${v.slice(0, 11)}…` : v}
-                />
-                <Tooltip
-                  cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                  formatter={(value) => [formatHours(value as number), "Total"] as [string, string]}
-                  contentStyle={{
-                    background: "rgba(15,15,15,0.95)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontSize: "12px",
-                    padding: "6px 10px",
-                  }}
-                  labelStyle={{ color: "rgba(255,255,255,0.5)", fontSize: "11px" }}
-                />
-                <Bar dataKey="hours" radius={[0, 3, 3, 0]} maxBarSize={22}>
-                  {bars.map((b) => (
-                    <Cell key={b.id} fill={b.color} fillOpacity={0.8} />
+        <div className="flex-1 min-h-0 flex flex-col p-6">
+          <div className="flex-1 min-h-0 pt-3 pb-1">
+            {loading && !hasData ? (
+              <div className="h-full flex items-center justify-center text-white/30 text-xs font-mono">
+                Loading…
+              </div>
+            ) : !hasData ? (
+              <div className="h-full flex items-center justify-center text-white/30 text-xs">
+                No data for this period
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={dataPoints}
+                  margin={{ top: 2, right: 12, bottom: 0, left: -8 }}
+                  barCategoryGap="20%"
+                >
+                  <XAxis
+                    dataKey="label"
+                    height={20 + series.length * 13}
+                    tick={(props) => <CustomXAxisTick {...props} series={series} bucketData={bucketData} />}
+                    axisLine={{ stroke: "rgba(255,255,255,0.08)" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => (v > 0 ? `${Math.round(v)}h` : "")}
+                    tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 9 }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={28}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                    content={<StackedTooltip series={series} />}
+                  />
+                  {series.map((s) => (
+                    <Bar
+                      key={s.id}
+                      dataKey={s.id}
+                      name={s.label}
+                      stackId="stack"
+                      fill={s.color}
+                      fillOpacity={0.85}
+                    />
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {config.viewMode === "week" && series.length > 0 && (
+            <div className="px-3 pb-2.5 flex flex-wrap gap-x-3 gap-y-1">
+              {series.map((s) => {
+                const total = seriesTotals.get(s.id) ?? 0;
+                if (total === 0) return null;
+                return (
+                  <div key={s.id} className="flex items-center gap-1.5">
+                    <span
+                      className="w-2 h-2 rounded-sm shrink-0"
+                      style={{ backgroundColor: s.color }}
+                    />
+                    <span className="text-[10px] text-white/50">{s.label}</span>
+                    <span className="text-[10px] text-white/30">{formatHours(total)}</span>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
