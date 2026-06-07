@@ -105,14 +105,17 @@ export const dashboardLayout = pgTable("dashboard_layout", {
 export const note = pgTable(
   "note",
   {
-    widgetInstanceId: text("widget_instance_id").primaryKey(),
+    id: text("id").primaryKey(),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
     blocks: jsonb("blocks").$type<NoteBlock[]>().notNull(),
+    order: integer("order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [index("note_user_idx").on(t.userId)],
+  (t) => [index("note_user_idx").on(t.userId, t.order)],
 );
 
 export const cheatsheetTag = pgTable(

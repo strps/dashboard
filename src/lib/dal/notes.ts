@@ -1,62 +1,74 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { note } from "@/lib/db/schema";
-import type { NoteBlock } from "@/dashboard/modules/notes/schemas";
+import type { Note, NoteBlock } from "@/dashboard/modules/notes/schemas";
 
 import { verifySession } from "./session";
 
-export async function getNote(
-  widgetInstanceId: string,
-): Promise<NoteBlock[] | null> {
-  const { userId } = await verifySession();
-  const [row] = await db
-    .select()
-    .from(note)
-    .where(
-      and(
-        eq(note.widgetInstanceId, widgetInstanceId),
-        eq(note.userId, userId),
-      ),
-    )
-    .limit(1);
-  if (!row) return null;
-  return row.blocks;
+function noteRow(r: typeof note.$inferSelect): Note {
+  return {
+    id: r.id,
+    title: r.title,
+    blocks: r.blocks,
+    order: r.order,
+  };
 }
 
-export async function saveNote(
-  widgetInstanceId: string,
+export async function listNotes(): Promise<Note[]> {
+  const { userId } = await verifySession();
+  const rows = await db
+    .select()
+    .from(note)
+    .where(eq(note.userId, userId))
+    .orderBy(asc(note.order), asc(note.createdAt));
+  return rows.map(noteRow);
+}
+
+export async function createNote(title: string): Promise<Note> {
+  const { userId } = await verifySession();
+  const existing = await db
+    .select({ order: note.order })
+    .from(note)
+    .where(eq(note.userId, userId));
+  const nextOrder = existing.reduce((m, r) => Math.max(m, r.order + 1), 0);
+  const row = {
+    id: crypto.randomUUID(),
+    userId,
+    title,
+    blocks: [] as NoteBlock[],
+    order: nextOrder,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  await db.insert(note).values(row);
+  return noteRow(row);
+}
+
+export async function renameNote(id: string, title: string): Promise<void> {
+  const { userId } = await verifySession();
+  await db
+    .update(note)
+    .set({ title, updatedAt: new Date() })
+    .where(and(eq(note.id, id), eq(note.userId, userId)));
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  const { userId } = await verifySession();
+  await db
+    .delete(note)
+    .where(and(eq(note.id, id), eq(note.userId, userId)));
+}
+
+export async function saveNoteBlocks(
+  id: string,
   blocks: NoteBlock[],
 ): Promise<void> {
   const { userId } = await verifySession();
   await db
-    .insert(note)
-    .values({
-      widgetInstanceId,
-      userId,
-      blocks,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: note.widgetInstanceId,
-      set: {
-        blocks,
-        updatedAt: new Date(),
-      },
-      where: eq(note.userId, userId),
-    });
-}
-
-export async function deleteNote(widgetInstanceId: string): Promise<void> {
-  const { userId } = await verifySession();
-  await db
-    .delete(note)
-    .where(
-      and(
-        eq(note.widgetInstanceId, widgetInstanceId),
-        eq(note.userId, userId),
-      ),
-    );
+    .update(note)
+    .set({ blocks, updatedAt: new Date() })
+    .where(and(eq(note.id, id), eq(note.userId, userId)));
 }
