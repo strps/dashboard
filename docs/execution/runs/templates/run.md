@@ -1,5 +1,6 @@
 <!--
-Copy to docs/execution/runs/YYYY-MM-DD-short-title.md and fill in as you work.
+Copy to docs/execution/runs/NNNN-short-title.md (next zero-padded sequence
+number) and fill in as you work.
 A run is the after-the-fact log of one change: what was done, what broke, how it
 was verified. See ../README.md.
 -->

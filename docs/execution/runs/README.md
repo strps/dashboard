@@ -13,7 +13,8 @@ and one-line fixes.
 ## How to use this folder
 
 1. Copy [`templates/run.md`](templates/run.md) to
-   `runs/YYYY-MM-DD-short-title.md` (date the run started, zero-padded).
+   `runs/NNNN-short-title.md`, where `NNNN` is the next zero-padded sequence
+   number (the first run is `0000-…`). Keep the title slug short and kebab-case.
 2. Fill it in as you go, not from memory afterwards.
 3. When the change merges, add a one-line entry to the root
    [`CHANGELOG.md`](../../../CHANGELOG.md) and link back to the run.
@@ -23,4 +24,4 @@ for someone who wasn't there. Keep them in sync.
 
 ## Runs
 
-_None yet — add the first with the template above._
+- [0000 — Calendar: always-selectable entries + circle resize handles](0000-calendar-selectable-entries.md)

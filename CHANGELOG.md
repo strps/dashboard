@@ -26,6 +26,11 @@ work — link the matching execution run under
 
 ### Changed
 
+- Calendar entries are selectable whenever the widget is locked, independent of
+  editor mode; the selection persists across editor-mode toggles. Resize handles
+  are now a small circle at each end of the selected entry (shown only in editor
+  mode) instead of full-width drag bars. See
+  [docs/execution/runs/0000-calendar-selectable-entries.md](docs/execution/runs/0000-calendar-selectable-entries.md).
 - Cheatsheet settings migrated from the legacy `src/app/settings/cheatsheet/`
   route to a registered module config page; the `SettingsNav` legacy special-case
   was removed. See

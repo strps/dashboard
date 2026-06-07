@@ -41,7 +41,7 @@ export function CalendarPropertiesWidget({ id }: WidgetComponentProps) {
   if (!selectedEntry) {
     body = (
       <div className="flex h-full items-center justify-center px-4 text-center text-xs text-white/30">
-        Select an entry in a calendar (editor mode) to edit it.
+        Select an entry in a calendar to edit it.
       </div>
     );
   } else {

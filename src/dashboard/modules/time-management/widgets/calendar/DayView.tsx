@@ -135,14 +135,16 @@ export function DayView(props: Props) {
   const dragCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => () => dragCleanupRef.current?.(), []);
 
-  // When this calendar leaves editor mode, drop a selection it owns so the
-  // properties widget reverts to its empty state.
+  // When this calendar is unlocked (the dashboard enters arrange mode), drop a
+  // selection it owns so the properties widget reverts to its empty state. The
+  // selection persists across editor-mode toggles — only entering arrange mode
+  // clears it.
   useEffect(() => {
-    if (editingEnabled) return;
+    if (locked) return;
     if (selectedEntry && entries.some((e) => e.id === selectedEntry.id)) {
       selectEntry(null);
     }
-  }, [editingEnabled, entries, selectedEntry, selectEntry]);
+  }, [locked, entries, selectedEntry, selectEntry]);
 
   function startDrag(
     ev: React.PointerEvent,
@@ -338,13 +340,14 @@ export function DayView(props: Props) {
                     .map((b, i) => {
                       const activity = activityById.get(b.activityId);
                       const color = activity?.color ?? "#52525b";
+                      const selectable = locked;
                       const editable = editingEnabled;
-                      const selected = editable && selectedEntry?.id === b.entryId;
+                      const selected = selectable && selectedEntry?.id === b.entryId;
                       const canMove = editable && !b.isOpen;
                       return (
                         <div
                           key={b.entryId}
-                          className={`absolute left-0.5 right-0.5 rounded-sm overflow-hidden text-[10px] font-mono text-white ${b.isOpen ? "animate-pulse" : ""} ${editable ? "select-none" : ""} ${canMove ? "cursor-grab" : ""} ${selected ? "ring-2 ring-white/80 ring-inset" : ""}`}
+                          className={`absolute left-0.5 right-0.5 rounded-sm overflow-hidden text-[10px] font-mono text-white ${b.isOpen ? "animate-pulse" : ""} ${selectable ? "select-none" : ""} ${canMove ? "cursor-grab" : ""} ${selected ? "ring-2 ring-white/80 ring-inset" : ""}`}
                           style={{
                             top: b.topPx,
                             height: Math.max(2, b.heightPx),
@@ -353,9 +356,9 @@ export function DayView(props: Props) {
                             zIndex: selected ? 100 : i + 1,
                           }}
                           title={activity?.name ?? ""}
-                          onMouseDown={editable ? (e) => e.stopPropagation() : undefined}
+                          onMouseDown={selectable ? (e) => e.stopPropagation() : undefined}
                           onClick={
-                            editable
+                            selectable
                               ? () =>
                                   selectEntry({
                                     id: b.entryId,
@@ -385,11 +388,11 @@ export function DayView(props: Props) {
                             <span className="truncate block ml-2 mt-1.5">{activity?.name ?? "—"}</span>
                           )}
 
-                          {editable && (
+                          {editable && selected && (
                             <>
-                              {/* Start (top) handle */}
+                              {/* Start (top) handle — small circle at the top end */}
                               <div
-                                className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize bg-white/60 hover:bg-white"
+                                className="absolute left-1/2 top-0.5 h-3 w-3 -translate-x-1/2 cursor-ns-resize rounded-full border border-black/30 bg-white shadow"
                                 onPointerDown={(e) =>
                                   startDrag(
                                     e,
@@ -403,10 +406,10 @@ export function DayView(props: Props) {
                                   )
                                 }
                               />
-                              {/* End (bottom) handle — closed entries only */}
+                              {/* End (bottom) handle — circle, closed entries only */}
                               {!b.isOpen && (
                                 <div
-                                  className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize bg-white/60 hover:bg-white"
+                                  className="absolute bottom-0.5 left-1/2 h-3 w-3 -translate-x-1/2 cursor-ns-resize rounded-full border border-black/30 bg-white shadow"
                                   onPointerDown={(e) =>
                                     startDrag(
                                       e,
