@@ -214,7 +214,7 @@ export function CheatsheetConfigPanel({
       <div className="border-t border-white/10 px-5 py-3 bg-white/[0.02] text-[11px] text-white/50 flex items-center justify-between">
         <span>Entries and tags are shared across all cheatsheet widgets.</span>
         <Link
-          href="/settings/cheatsheet"
+          href="/settings/cheatsheet/cheatsheet"
           className="text-white/70 hover:text-white underline"
         >
           Manage entries and tags →

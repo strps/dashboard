@@ -38,3 +38,9 @@ placement) and to surface schema/auth implications early.
 - [templates/adr.md](templates/adr.md) — copy when recording an architectural decision.
 
 Store ADRs in this folder as `adr-NNNN-short-title.md` (zero-padded, incrementing).
+
+## Audits
+
+- [module-standards-audit.md](module-standards-audit.md) — which modules don't follow
+  the standards and how to refactor them. `cheatsheet` was migrated to a registered
+  config page (2026-06-07); `stats`/`weather` remain stubs pending implementation.

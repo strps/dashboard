@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Settings, type LucideIcon } from "lucide-react";
+import { Settings, type LucideIcon } from "lucide-react";
 
 import { MODULES } from "@/dashboard/modules";
 
@@ -12,11 +12,6 @@ interface NavItem {
   Icon: LucideIcon;
   adminOnly?: boolean;
 }
-
-// Cheatsheet hasn't been migrated to the module-based settings layout yet.
-const LEGACY_ITEMS: NavItem[] = [
-  { href: "/settings/cheatsheet", label: "Cheatsheet", Icon: BookOpen },
-];
 
 const ADMIN_ITEMS: NavItem[] = [
   {
@@ -62,10 +57,7 @@ export function SettingsNav({ isAdmin }: SettingsNavProps) {
     }))
     .filter((g) => g.items.length > 0);
 
-  const groups: NavGroup[] = [
-    ...filteredModuleGroups,
-    { label: "Other", items: LEGACY_ITEMS },
-  ];
+  const groups: NavGroup[] = [...filteredModuleGroups];
   if (isAdmin) {
     groups.push({ label: "Admin", items: ADMIN_ITEMS });
   }

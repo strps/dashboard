@@ -31,7 +31,6 @@ src/
     settings/                   user + admin settings
       [module]/[page]/page.tsx  dynamic route → renders a module's config page
       security/                 admin-only
-      cheatsheet/               legacy route (not yet a module page)
     api/auth/[...all]/          Better Auth handler
   proxy.ts                      route gate (middleware-style) — OPTIMISTIC ONLY
   dashboard/

@@ -1,6 +1,7 @@
 import { BookOpen } from "lucide-react";
 
 import { defineModule } from "../registry";
+import { CheatsheetTab } from "./config-pages/CheatsheetTab";
 import { cheatsheetWidget } from "./CheatsheetWidget";
 
 defineModule({
@@ -8,8 +9,16 @@ defineModule({
   label: "Cheatsheet",
   icon: BookOpen,
   widgets: [cheatsheetWidget],
-  // Cheatsheet settings (entries + tags) currently live at /settings/cheatsheet
-  // as a legacy route. Migrate them into configPages here when ready.
+  configPages: [
+    {
+      slug: "cheatsheet",
+      label: "Cheatsheet",
+      icon: BookOpen,
+      component: CheatsheetTab,
+      description:
+        "Manage entries and tags. These are shared across every cheatsheet widget on your dashboard. Use the gear icon on a widget to pick which tags appear as filter buttons there.",
+    },
+  ],
 });
 
 export {};

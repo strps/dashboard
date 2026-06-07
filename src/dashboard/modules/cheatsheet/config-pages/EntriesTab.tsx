@@ -10,13 +10,13 @@ import {
   createEntryAction,
   deleteEntryAction,
   updateEntryAction,
-} from "@/dashboard/modules/cheatsheet/actions";
+} from "../actions";
 import {
   entryInputSchema,
   type CheatsheetEntry,
   type CheatsheetEntryInput,
   type CheatsheetTag,
-} from "@/dashboard/modules/cheatsheet/schemas";
+} from "../schemas";
 
 import type { EntryOptimisticAction } from "./CheatsheetManager";
 

@@ -10,5 +10,5 @@ export default function SettingsIndexPage() {
   if (firstModuleWithPages && firstPage) {
     redirect(`/settings/${firstModuleWithPages.id}/${firstPage.slug}`);
   }
-  redirect("/settings/cheatsheet");
+  redirect("/settings/cheatsheet/cheatsheet");
 }

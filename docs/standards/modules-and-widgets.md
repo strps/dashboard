@@ -100,7 +100,7 @@ Single-widget modules (`notes`, `weather`, `stats`) collapse the `widgets/` laye
 | `time-management` | Time management | `clock`, `activitySelector`, `calendar`, `calendarProperties`, `timeChart` | `activities`, `tags` |
 | `stats` | Stats | `stats` | — |
 | `weather` | Weather | `weather` (stub) | — |
-| `cheatsheet` | Cheatsheet | `cheatsheet` | — (legacy route `/settings/cheatsheet`) |
+| `cheatsheet` | Cheatsheet | `cheatsheet` | `cheatsheet` |
 
 The full `WidgetType` union and per-type `DEFAULT_SIZES` live in
 [dashboardStore.ts](../../src/dashboard/store/dashboardStore.ts).
