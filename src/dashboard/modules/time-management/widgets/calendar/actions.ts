@@ -1,10 +1,18 @@
 "use server";
 
-import { listActivities, listEntriesInRange, updateEntryTimes } from "../../dal";
+import {
+  deleteEntry,
+  listActivities,
+  listEntriesInRange,
+  updateEntryActivity,
+  updateEntryTimes,
+} from "../../dal";
 import type { Activity } from "../../dal";
 import {
+  updateEntryActivitySchema,
   updateEntryTimesSchema,
   type CalendarRangeEntry,
+  type UpdateEntryActivityInput,
   type UpdateEntryTimesInput,
 } from "./schemas";
 
@@ -24,4 +32,19 @@ export async function updateEntryTimesAction(
 ): Promise<void> {
   const parsed = updateEntryTimesSchema.parse(input);
   await updateEntryTimes(parsed.id, parsed.startedAt, parsed.endedAt);
+}
+
+export async function updateEntryActivityAction(
+  input: UpdateEntryActivityInput,
+): Promise<void> {
+  const parsed = updateEntryActivitySchema.parse(input);
+  await updateEntryActivity(parsed.id, parsed.activityId);
+}
+
+export async function deleteEntryAction(id: string): Promise<void> {
+  await deleteEntry(id);
+}
+
+export async function getActivitiesAction(): Promise<Activity[]> {
+  return listActivities();
 }

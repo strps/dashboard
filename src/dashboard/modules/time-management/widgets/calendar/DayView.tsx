@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { addDays, format, isSameDay, startOfDay } from "date-fns";
 
 import type { Activity } from "../../dal";
+import { useCalendarSelection } from "./calendarSelectionContext";
 import type { CalendarRangeEntry } from "./schemas";
 
 const GUTTER_PX = 44;
@@ -115,7 +116,8 @@ export function DayView(props: Props) {
   const totalDayHeight = hourPx * 24;
 
   // --- Editor: drag handles to adjust entry timestamps ---
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  // Selection lives in shared context so a sibling properties widget can read it.
+  const { selectedEntry, selectEntry } = useCalendarSelection();
   const [draft, setDraft] = useState<Draft | null>(null);
   // Refs let the live drag listeners read current values without re-subscribing.
   // Synced in an effect (not during render); a drag never overlaps a resize/config
@@ -133,15 +135,34 @@ export function DayView(props: Props) {
   const dragCleanupRef = useRef<(() => void) | null>(null);
   useEffect(() => () => dragCleanupRef.current?.(), []);
 
+  // When this calendar leaves editor mode, drop a selection it owns so the
+  // properties widget reverts to its empty state.
+  useEffect(() => {
+    if (editingEnabled) return;
+    if (selectedEntry && entries.some((e) => e.id === selectedEntry.id)) {
+      selectEntry(null);
+    }
+  }, [editingEnabled, entries, selectedEntry, selectEntry]);
+
   function startDrag(
     ev: React.PointerEvent,
-    entry: { entryId: string; startMs: number; endMs: number | null },
+    entry: {
+      entryId: string;
+      activityId: string;
+      startMs: number;
+      endMs: number | null;
+    },
     kind: DragKind,
   ) {
     if (!editingEnabled) return;
     ev.stopPropagation();
     ev.preventDefault();
-    setSelectedEntryId(entry.entryId);
+    selectEntry({
+      id: entry.entryId,
+      activityId: entry.activityId,
+      startedAt: entry.startMs,
+      endedAt: entry.endMs,
+    });
 
     const drag: DragState = {
       entryId: entry.entryId,
@@ -187,6 +208,13 @@ export function DayView(props: Props) {
           (d.startedAt !== drag.origStart || d.endedAt !== drag.origEnd)
         ) {
           onUpdateRef.current(drag.entryId, d.startedAt, d.endedAt);
+          // Keep the shared selection in sync so the properties widget tracks drags.
+          selectEntry({
+            id: drag.entryId,
+            activityId: entry.activityId,
+            startedAt: d.startedAt,
+            endedAt: d.endedAt,
+          });
         }
         return null;
       });
@@ -311,7 +339,7 @@ export function DayView(props: Props) {
                       const activity = activityById.get(b.activityId);
                       const color = activity?.color ?? "#52525b";
                       const editable = editingEnabled;
-                      const selected = editable && selectedEntryId === b.entryId;
+                      const selected = editable && selectedEntry?.id === b.entryId;
                       const canMove = editable && !b.isOpen;
                       return (
                         <div
@@ -326,13 +354,28 @@ export function DayView(props: Props) {
                           }}
                           title={activity?.name ?? ""}
                           onMouseDown={editable ? (e) => e.stopPropagation() : undefined}
-                          onClick={editable ? () => setSelectedEntryId(b.entryId) : undefined}
+                          onClick={
+                            editable
+                              ? () =>
+                                  selectEntry({
+                                    id: b.entryId,
+                                    activityId: b.activityId,
+                                    startedAt: b.startMs,
+                                    endedAt: b.endMs,
+                                  })
+                              : undefined
+                          }
                           onPointerDown={
                             canMove
                               ? (e) =>
                                   startDrag(
                                     e,
-                                    { entryId: b.entryId, startMs: b.startMs, endMs: b.endMs },
+                                    {
+                                      entryId: b.entryId,
+                                      activityId: b.activityId,
+                                      startMs: b.startMs,
+                                      endMs: b.endMs,
+                                    },
                                     "move",
                                   )
                               : undefined
@@ -350,7 +393,12 @@ export function DayView(props: Props) {
                                 onPointerDown={(e) =>
                                   startDrag(
                                     e,
-                                    { entryId: b.entryId, startMs: b.startMs, endMs: b.endMs },
+                                    {
+                                      entryId: b.entryId,
+                                      activityId: b.activityId,
+                                      startMs: b.startMs,
+                                      endMs: b.endMs,
+                                    },
                                     "resize-start",
                                   )
                                 }
@@ -362,7 +410,12 @@ export function DayView(props: Props) {
                                   onPointerDown={(e) =>
                                     startDrag(
                                       e,
-                                      { entryId: b.entryId, startMs: b.startMs, endMs: b.endMs },
+                                      {
+                                        entryId: b.entryId,
+                                        activityId: b.activityId,
+                                        startMs: b.startMs,
+                                        endMs: b.endMs,
+                                      },
                                       "resize-end",
                                     )
                                   }

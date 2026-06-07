@@ -9,6 +9,7 @@ import { useWidget } from "../../../../components/base-widget/useWidget";
 import type { WidgetComponentProps, WidgetDefinition } from "../../../registry";
 
 import { CalendarConfigDialog } from "./CalendarConfigDialog";
+import { CalendarSelectionProvider } from "./calendarSelectionContext";
 import { CalendarToolbar } from "./CalendarToolbar";
 import { DayView } from "./DayView";
 import { MonthView } from "./MonthView";
@@ -83,6 +84,7 @@ export const calendarWidget: WidgetDefinition<CalendarConfig> = {
   minW: 4,
   minH: 4,
   component: CalendarWidget,
+  provider: CalendarSelectionProvider,
   configSchema: calendarConfigSchema,
   defaultConfig: defaultCalendarConfig,
 };

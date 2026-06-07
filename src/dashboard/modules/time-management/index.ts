@@ -5,6 +5,7 @@ import { ActivitiesTab } from "./config-pages/ActivitiesTab";
 import { TagsTab } from "./config-pages/TagsTab";
 import { activitySelectorWidget } from "./widgets/activity-selector/ActivitySelectorWidget";
 import { calendarWidget } from "./widgets/calendar/CalendarWidget";
+import { calendarPropertiesWidget } from "./widgets/calendar-properties/CalendarPropertiesWidget";
 import { clockWidget } from "./widgets/clock/ClockWidget";
 import { timeChartWidget } from "./widgets/time-chart/TimeChartWidget";
 
@@ -12,7 +13,13 @@ defineModule({
   id: "time-management",
   label: "Time management",
   icon: Clock,
-  widgets: [clockWidget, activitySelectorWidget, calendarWidget, timeChartWidget],
+  widgets: [
+    clockWidget,
+    activitySelectorWidget,
+    calendarWidget,
+    calendarPropertiesWidget,
+    timeChartWidget,
+  ],
   configPages: [
     {
       slug: "activities",

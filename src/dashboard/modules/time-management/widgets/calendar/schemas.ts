@@ -38,3 +38,9 @@ export const updateEntryTimesSchema = z.object({
   endedAt: z.number().int().nullable(),
 });
 export type UpdateEntryTimesInput = z.infer<typeof updateEntryTimesSchema>;
+
+export const updateEntryActivitySchema = z.object({
+  id: z.string().min(1),
+  activityId: z.string().min(1),
+});
+export type UpdateEntryActivityInput = z.infer<typeof updateEntryActivitySchema>;

@@ -382,6 +382,36 @@ export async function updateEntryTimes(
     .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)));
 }
 
+export async function updateEntryActivity(
+  id: string,
+  activityId: string,
+): Promise<void> {
+  const { userId } = await verifySession();
+
+  const [owned] = await db
+    .select({ id: timeEntry.id })
+    .from(timeEntry)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)))
+    .limit(1);
+  if (!owned) throw new Error("Entry not found");
+
+  if (!(await activityExistsForUser(userId, activityId))) {
+    throw new Error("Activity not found");
+  }
+
+  await db
+    .update(timeEntry)
+    .set({ activityId })
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)));
+}
+
+export async function deleteEntry(id: string): Promise<void> {
+  const { userId } = await verifySession();
+  await db
+    .delete(timeEntry)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)));
+}
+
 export async function listEntriesInRange(
   from: Date,
   to: Date,

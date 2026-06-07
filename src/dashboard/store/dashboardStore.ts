@@ -17,6 +17,7 @@ export type WidgetType =
   | "weather"
   | "activitySelector"
   | "calendar"
+  | "calendarProperties"
   | "cheatsheet"
   | "timeChart";
 
@@ -46,6 +47,7 @@ const DEFAULT_SIZES: Record<WidgetType, { w: number; h: number }> = {
   weather:          { w: 3, h: 3 },
   activitySelector: { w: 3, h: 3 },
   calendar:         { w: 6, h: 5 },
+  calendarProperties: { w: 3, h: 4 },
   cheatsheet:       { w: 5, h: 5 },
   timeChart:        { w: 5, h: 4 },
 };
