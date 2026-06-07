@@ -29,6 +29,8 @@ only gate before review. Copy into your PR description.
 ## Docs & hygiene
 
 - [ ] Updated the relevant doc under `docs/` if behavior/structure changed
+- [ ] Added a [CHANGELOG.md](../../../CHANGELOG.md) entry; for non-trivial work,
+      logged a [run](../runs/README.md)
 - [ ] No secrets committed; `.env.example` updated for any new env var
 - [ ] Commit messages follow `docs/conventions/git.md` (type prefix, lowercase, no period)
 - [ ] Branched off `main`; PR opened (not pushed straight to `main`)

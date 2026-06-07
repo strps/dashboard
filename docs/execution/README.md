@@ -15,6 +15,13 @@ written a [feature plan](../planning/templates/feature-plan.md).
 - [templates/module-checklist.md](templates/module-checklist.md) — copy-paste checklist for shipping a module/widget.
 - [templates/pr-checklist.md](templates/pr-checklist.md) — run before opening a PR.
 
+## Recording what you did
+
+- [runs/](runs/README.md) — after-the-fact logs of individual changes (what was
+  done, what broke, how it was verified). Write one for any non-trivial change.
+- When a change merges, add an entry to the root
+  [CHANGELOG.md](../../CHANGELOG.md) and link back to its run.
+
 ## How to verify (there are no automated tests)
 
 The only way to confirm a change works is to run the app:

@@ -41,6 +41,7 @@ Next.js advice. When the code changes, update the matching doc in the same PR.
 - **Add a settings page** → [execution/add-a-config-page.md](execution/add-a-config-page.md)
 - **Change the database** → [automation/database-migrations.md](automation/database-migrations.md)
 - **Plan a feature** → [planning/README.md](planning/README.md)
+- **Log a change / read what shipped** → [execution/runs/](execution/runs/README.md) · [CHANGELOG.md](../CHANGELOG.md)
 
 ## Non-negotiables (the short list)
 

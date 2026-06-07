@@ -30,6 +30,16 @@ Rules:
   [../automation/linting.md](../automation/linting.md)), so local checks are the
   only gate.
 
+## Changelog
+
+- Notable changes are recorded in the root [CHANGELOG.md](../../CHANGELOG.md)
+  ([Keep a Changelog](https://keepachangelog.com/) format). Add an entry in the
+  same PR as the change.
+- For non-trivial work, also write an execution run under
+  [../execution/runs/](../execution/runs/README.md) and link it from the changelog
+  entry. The commit history is the low-level log; the changelog is the
+  human-readable summary.
+
 ## What's tracked
 
 - `.env` is gitignored; `.env.example` is committed. Never commit secrets.
