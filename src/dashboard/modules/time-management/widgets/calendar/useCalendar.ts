@@ -11,7 +11,7 @@ import {
 
 import { useWidgetConfig } from "../../../../components/base-widget/useWidgetConfig";
 import type { Activity } from "../../dal";
-import { getCalendarDataAction } from "./actions";
+import { getCalendarDataAction, updateEntryTimesAction } from "./actions";
 import type { CalendarConfig, CalendarRangeEntry, CalendarView } from "./schemas";
 
 function clamp(n: number, lo: number, hi: number) {
@@ -61,11 +61,18 @@ export interface UseCalendarResult {
   loading: boolean;
   range: { from: Date; to: Date };
   weekStartsOn: 0 | 1;
+  editor: boolean;
+  editorSnapMinutes: number;
+  updateEntryTimes: (
+    entryId: string,
+    startedAt: number,
+    endedAt: number | null,
+  ) => void;
 }
 
 export function useCalendar(instanceId: string): UseCalendarResult {
   const [config, setConfig] = useWidgetConfig<CalendarConfig>(instanceId);
-  const { view, daysShown, startAnchorMinutes, windowHours, followNow, weekStartsOn } = config;
+  const { view, daysShown, startAnchorMinutes, windowHours, followNow, weekStartsOn, editor, editorSnapMinutes } = config;
 
   const updateConfig = useCallback(
     (patch: Partial<CalendarConfig>) => setConfig({ ...config, ...patch }),
@@ -140,6 +147,25 @@ export function useCalendar(instanceId: string): UseCalendarResult {
     [activities],
   );
 
+  const updateEntryTimes = useCallback(
+    (entryId: string, startedAt: number, endedAt: number | null) => {
+      // Optimistically move the block, then persist. On failure, refetch to revert.
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entryId ? { ...e, startedAt, endedAt } : e,
+        ),
+      );
+      updateEntryTimesAction({ id: entryId, startedAt, endedAt })
+        .then(() => {
+          window.dispatchEvent(new CustomEvent("time-entry-changed"));
+        })
+        .catch(() => {
+          setRefreshKey((k) => k + 1);
+        });
+    },
+    [],
+  );
+
   function shiftDay(delta: number) {
     setAnchorDate((d) => addDays(d, delta));
   }
@@ -170,5 +196,8 @@ export function useCalendar(instanceId: string): UseCalendarResult {
     loading,
     range,
     weekStartsOn,
+    editor,
+    editorSnapMinutes,
+    updateEntryTimes,
   };
 }

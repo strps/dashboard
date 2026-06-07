@@ -16,6 +16,8 @@ export const calendarConfigSchema = z.object({
   windowHours: z.number().int().min(1).max(24),
   followNow: z.boolean(),
   weekStartsOn: z.union([z.literal(0), z.literal(1)]),
+  editor: z.boolean(),
+  editorSnapMinutes: z.union([z.literal(1), z.literal(5), z.literal(15)]),
 });
 export type CalendarConfig = z.infer<typeof calendarConfigSchema>;
 
@@ -26,4 +28,13 @@ export const defaultCalendarConfig: CalendarConfig = {
   windowHours: 10,
   followNow: false,
   weekStartsOn: 1,
+  editor: false,
+  editorSnapMinutes: 5,
 };
+
+export const updateEntryTimesSchema = z.object({
+  id: z.string().min(1),
+  startedAt: z.number().int(),
+  endedAt: z.number().int().nullable(),
+});
+export type UpdateEntryTimesInput = z.infer<typeof updateEntryTimesSchema>;

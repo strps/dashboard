@@ -141,6 +141,43 @@ export function CalendarConfigDialog({ config, updateConfig }: Props) {
             </select>
           </label>
         </section>
+
+        <section className="space-y-2">
+          <h3 className="text-xs font-medium text-white/80">Editing</h3>
+          <p className="text-[11px] text-white/50">
+            Show drag handles to adjust entry start/end times directly on the day
+            view. Editing only works while the dashboard is locked.
+          </p>
+          <label className="flex items-center gap-2 text-[11px] text-white/60">
+            <input
+              type="checkbox"
+              checked={config.editor}
+              onChange={(e) => updateConfig({ editor: e.target.checked })}
+              className="accent-emerald-500"
+            />
+            Enable editor
+          </label>
+
+          {config.editor && (
+            <label className="flex flex-col gap-1 text-[11px] text-white/50 max-w-[12rem]">
+              Snap to
+              <select
+                value={config.editorSnapMinutes}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  updateConfig({
+                    editorSnapMinutes: n === 1 ? 1 : n === 15 ? 15 : 5,
+                  });
+                }}
+                className="rounded border border-white/10 bg-neutral-950 px-2 py-1 text-xs text-white/80 outline-none focus:border-white/30"
+              >
+                <option value={1}>1 minute</option>
+                <option value={5}>5 minutes</option>
+                <option value={15}>15 minutes</option>
+              </select>
+            </label>
+          )}
+        </section>
       </div>
     </div>
   );

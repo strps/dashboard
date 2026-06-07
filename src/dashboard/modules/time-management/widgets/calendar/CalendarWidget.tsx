@@ -47,6 +47,10 @@ export function CalendarWidget({ id }: WidgetComponentProps) {
               windowHours={cal.windowHours}
               entries={cal.entries}
               activityById={cal.activityById}
+              editor={cal.editor}
+              locked={locked}
+              snapMinutes={cal.editorSnapMinutes}
+              onUpdateEntryTimes={cal.updateEntryTimes}
             />
           ) : (
             <MonthView

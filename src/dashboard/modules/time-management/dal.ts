@@ -352,6 +352,36 @@ export async function listEntries({
     }));
 }
 
+export async function updateEntryTimes(
+  id: string,
+  startedAt: number,
+  endedAt: number | null,
+): Promise<void> {
+  const { userId } = await verifySession();
+
+  const [owned] = await db
+    .select({ id: timeEntry.id })
+    .from(timeEntry)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)))
+    .limit(1);
+  if (!owned) throw new Error("Entry not found");
+
+  if (startedAt >= (endedAt ?? Date.now())) {
+    throw new Error("Entry start must be before its end");
+  }
+
+  // Open entries keep their null end (it tracks "now"); only the start moves.
+  const patch =
+    endedAt === null
+      ? { startedAt: new Date(startedAt) }
+      : { startedAt: new Date(startedAt), endedAt: new Date(endedAt) };
+
+  await db
+    .update(timeEntry)
+    .set(patch)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)));
+}
+
 export async function listEntriesInRange(
   from: Date,
   to: Date,

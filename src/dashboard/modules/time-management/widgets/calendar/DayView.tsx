@@ -6,6 +6,22 @@ import type { CalendarRangeEntry } from "./schemas";
 
 const GUTTER_PX = 44;
 
+type DragKind = "move" | "resize-start" | "resize-end";
+
+interface DragState {
+  entryId: string;
+  kind: DragKind;
+  startY: number;
+  origStart: number;
+  origEnd: number | null;
+}
+
+interface Draft {
+  entryId: string;
+  startedAt: number;
+  endedAt: number | null;
+}
+
 interface Props {
   anchorDate: Date;
   daysShown: number;
@@ -13,6 +29,14 @@ interface Props {
   windowHours: number;
   entries: CalendarRangeEntry[];
   activityById: Map<string, Activity>;
+  editor: boolean;
+  locked: boolean;
+  snapMinutes: number;
+  onUpdateEntryTimes: (
+    entryId: string,
+    startedAt: number,
+    endedAt: number | null,
+  ) => void;
 }
 
 interface PositionedBlock {
@@ -21,6 +45,8 @@ interface PositionedBlock {
   topPx: number;
   heightPx: number;
   isOpen: boolean;
+  startMs: number;
+  endMs: number | null;
 }
 
 function positionForDay(
@@ -48,13 +74,28 @@ function positionForDay(
       topPx: (startMin / 60) * hourPx,
       heightPx: ((endMin - startMin) / 60) * hourPx,
       isOpen,
+      startMs: e.startedAt,
+      endMs: e.endedAt,
     });
   }
   return out;
 }
 
 export function DayView(props: Props) {
-  const { anchorDate, daysShown, viewStartAnchorMinutes: startAnchorMinutes, windowHours, entries, activityById } = props;
+  const {
+    anchorDate,
+    daysShown,
+    viewStartAnchorMinutes: startAnchorMinutes,
+    windowHours,
+    entries,
+    activityById,
+    editor,
+    locked,
+    snapMinutes,
+    onUpdateEntryTimes,
+  } = props;
+
+  const editingEnabled = editor && locked;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -72,6 +113,92 @@ export function DayView(props: Props) {
   // hourPx = how many px represent one hour; windowHours fills the viewport exactly.
   const hourPx = containerHeight > 0 ? containerHeight / windowHours : 0;
   const totalDayHeight = hourPx * 24;
+
+  // --- Editor: drag handles to adjust entry timestamps ---
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  // Refs let the live drag listeners read current values without re-subscribing.
+  // Synced in an effect (not during render); a drag never overlaps a resize/config
+  // change, so a one-render lag here is inconsequential.
+  const hourPxRef = useRef(hourPx);
+  const snapRef = useRef(snapMinutes);
+  const onUpdateRef = useRef(onUpdateEntryTimes);
+  useEffect(() => {
+    hourPxRef.current = hourPx;
+    snapRef.current = snapMinutes;
+    onUpdateRef.current = onUpdateEntryTimes;
+  }, [hourPx, snapMinutes, onUpdateEntryTimes]);
+
+  // Holds a teardown for the active drag's window listeners (also used on unmount).
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  function startDrag(
+    ev: React.PointerEvent,
+    entry: { entryId: string; startMs: number; endMs: number | null },
+    kind: DragKind,
+  ) {
+    if (!editingEnabled) return;
+    ev.stopPropagation();
+    ev.preventDefault();
+    setSelectedEntryId(entry.entryId);
+
+    const drag: DragState = {
+      entryId: entry.entryId,
+      kind,
+      startY: ev.clientY,
+      origStart: entry.startMs,
+      origEnd: entry.endMs,
+    };
+
+    const onMove = (e: PointerEvent) => {
+      const px = hourPxRef.current;
+      if (px === 0) return;
+      const snap = snapRef.current > 0 ? snapRef.current : 1;
+      const deltaMin =
+        Math.round(((e.clientY - drag.startY) / px) * 60 / snap) * snap;
+      const deltaMs = deltaMin * 60_000;
+      const minMs = snap * 60_000;
+      const effEnd = drag.origEnd ?? Date.now();
+
+      let start = drag.origStart;
+      let end = drag.origEnd;
+      if (drag.kind === "resize-start") {
+        start = Math.min(drag.origStart + deltaMs, effEnd - minMs);
+      } else if (drag.kind === "resize-end") {
+        if (drag.origEnd === null) return;
+        end = Math.max(drag.origEnd + deltaMs, drag.origStart + minMs);
+      } else {
+        if (drag.origEnd === null) return;
+        start = drag.origStart + deltaMs;
+        end = drag.origEnd + deltaMs;
+      }
+      setDraft({ entryId: drag.entryId, startedAt: start, endedAt: end });
+    };
+
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      dragCleanupRef.current = null;
+      setDraft((d) => {
+        if (
+          d &&
+          d.entryId === drag.entryId &&
+          (d.startedAt !== drag.origStart || d.endedAt !== drag.origEnd)
+        ) {
+          onUpdateRef.current(drag.entryId, d.startedAt, d.endedAt);
+        }
+        return null;
+      });
+    }
+
+    dragCleanupRef.current = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -113,6 +240,15 @@ export function DayView(props: Props) {
   const nowMinutesOfDay = today.getHours() * 60 + today.getMinutes();
   const nowTopPx = (nowMinutesOfDay / 60) * hourPx;
 
+  // While dragging, show the entry at its draft timestamps.
+  const effectiveEntries = draft
+    ? entries.map((e) =>
+        e.id === draft.entryId
+          ? { ...e, startedAt: draft.startedAt, endedAt: draft.endedAt }
+          : e,
+      )
+    : entries;
+
   return (
     <div className="h-full flex flex-col text-xs relative">
       {/* Day headers — fixed, not scrolled */}
@@ -151,7 +287,7 @@ export function DayView(props: Props) {
 
             {/* Day columns */}
             {days.map((dayStart) => {
-              const blocks = positionForDay(dayStart, entries, hourPx, nowMs);
+              const blocks = positionForDay(dayStart, effectiveEntries, hourPx, nowMs);
               const isToday = isSameDay(dayStart, today);
               return (
                 <div
@@ -174,21 +310,65 @@ export function DayView(props: Props) {
                     .map((b, i) => {
                       const activity = activityById.get(b.activityId);
                       const color = activity?.color ?? "#52525b";
+                      const editable = editingEnabled;
+                      const selected = editable && selectedEntryId === b.entryId;
+                      const canMove = editable && !b.isOpen;
                       return (
                         <div
                           key={b.entryId}
-                          className={`absolute left-0.5 right-0.5 rounded-sm  overflow-hidden text-[10px] font-mono text-white ${b.isOpen ? "animate-pulse" : ""}`}
+                          className={`absolute left-0.5 right-0.5 rounded-sm overflow-hidden text-[10px] font-mono text-white ${b.isOpen ? "animate-pulse" : ""} ${editable ? "select-none" : ""} ${canMove ? "cursor-grab" : ""} ${selected ? "ring-2 ring-white/80 ring-inset" : ""}`}
                           style={{
                             top: b.topPx,
                             height: Math.max(2, b.heightPx),
                             background: color,
                             opacity: 0.8,
-                            zIndex: i + 1,
+                            zIndex: selected ? 100 : i + 1,
                           }}
                           title={activity?.name ?? ""}
+                          onMouseDown={editable ? (e) => e.stopPropagation() : undefined}
+                          onClick={editable ? () => setSelectedEntryId(b.entryId) : undefined}
+                          onPointerDown={
+                            canMove
+                              ? (e) =>
+                                  startDrag(
+                                    e,
+                                    { entryId: b.entryId, startMs: b.startMs, endMs: b.endMs },
+                                    "move",
+                                  )
+                              : undefined
+                          }
                         >
                           {b.heightPx > 18 && (
                             <span className="truncate block ml-2 mt-1.5">{activity?.name ?? "—"}</span>
+                          )}
+
+                          {editable && (
+                            <>
+                              {/* Start (top) handle */}
+                              <div
+                                className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize bg-white/60 hover:bg-white"
+                                onPointerDown={(e) =>
+                                  startDrag(
+                                    e,
+                                    { entryId: b.entryId, startMs: b.startMs, endMs: b.endMs },
+                                    "resize-start",
+                                  )
+                                }
+                              />
+                              {/* End (bottom) handle — closed entries only */}
+                              {!b.isOpen && (
+                                <div
+                                  className="absolute inset-x-0 bottom-0 h-1.5 cursor-ns-resize bg-white/60 hover:bg-white"
+                                  onPointerDown={(e) =>
+                                    startDrag(
+                                      e,
+                                      { entryId: b.entryId, startMs: b.startMs, endMs: b.endMs },
+                                      "resize-end",
+                                    )
+                                  }
+                                />
+                              )}
+                            </>
                           )}
                         </div>
                       );
