@@ -37,7 +37,17 @@ placement) and to surface schema/auth implications early.
 - [templates/feature-plan.md](templates/feature-plan.md) — copy for any non-trivial change.
 - [templates/adr.md](templates/adr.md) — copy when recording an architectural decision.
 
-Store ADRs in this folder as `adr-NNNN-short-title.md` (zero-padded, incrementing).
+Filled-in plans for changes substantial enough to warrant review (new module,
+schema change, cross-cutting refactor) are committed in this folder as
+`plan-NNNN-short-title.md`; ADRs as `adr-NNNN-short-title.md`. Each is its own
+zero-padded, incrementing series. Smaller feature plans can stay scratch (a local
+file or the PR description) — only commit one when it's worth keeping as a
+record of *why*, alongside the ADRs it may reference.
+
+## Plans
+
+- [plan-0000-configurable-grid-layouts.md](plan-0000-configurable-grid-layouts.md) —
+  per-dashboard configurable grid (columns, row height, fit-to-screen). Proposed.
 
 ## Audits
 

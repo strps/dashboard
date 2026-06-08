@@ -1,6 +1,9 @@
 <!--
-Copy this file to a scratch location (or your PR description) and fill it in.
-Keep it short — it's a thinking tool, not a deliverable.
+Fill this in as a thinking tool — keep it short. For most changes, a scratch copy
+(local file or PR description) is enough. For changes substantial enough to be
+worth keeping as a record, copy this to docs/planning/plan-NNNN-short-title.md
+(zero-padded, incrementing — its own series, separate from adr-NNNN-*.md) and
+link it from the README's plan list.
 -->
 
 # Feature plan: <name>
