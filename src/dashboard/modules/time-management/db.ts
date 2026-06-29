@@ -3,6 +3,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -11,6 +12,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { user } from "@/lib/db/schema";
+
+import type { EntryMetadata } from "./schemas";
 
 export const activity = pgTable(
   "activity",
@@ -78,6 +81,10 @@ export const timeEntry = pgTable(
       .references(() => activity.id, { onDelete: "cascade" }),
     startedAt: timestamp("started_at").notNull().defaultNow(),
     endedAt: timestamp("ended_at"),
+    metadata: jsonb("metadata")
+      .$type<EntryMetadata>()
+      .notNull()
+      .default({ notes: [] }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [

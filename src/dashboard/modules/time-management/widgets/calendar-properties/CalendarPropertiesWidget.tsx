@@ -7,6 +7,8 @@ import { BaseWidget } from "../../../../components/base-widget/BaseWidget";
 import { useWidget } from "../../../../components/base-widget/useWidget";
 import type { WidgetComponentProps, WidgetDefinition } from "../../../registry";
 
+import { EntryNotesEditor } from "../shared/EntryNotesEditor";
+
 import { useCalendarProperties } from "./useCalendarProperties";
 
 function toLocalInput(ms: number): string {
@@ -135,6 +137,13 @@ export function CalendarPropertiesWidget({ id }: WidgetComponentProps) {
             {isOpen ? "running" : formatDuration(durationMs)}
           </span>
         </div>
+
+        {/* Notes */}
+        <EntryNotesEditor
+          key={selectedEntry.id}
+          entryId={selectedEntry.id}
+          disabled={disabled}
+        />
 
         {/* Delete */}
         <button

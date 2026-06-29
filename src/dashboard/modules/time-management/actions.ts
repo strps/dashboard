@@ -5,6 +5,7 @@ import {
   createActivityTag,
   deleteActivity,
   deleteActivityTag,
+  getEntryNotes,
   getOpenEntry,
   listActivities,
   listActivityTags,
@@ -13,6 +14,7 @@ import {
   stopEntry,
   updateActivity,
   updateActivityTag,
+  updateEntryNotes,
 } from "./dal";
 
 import {
@@ -22,9 +24,12 @@ import {
   type ActivityTag,
   type ActivityTagInput,
   type OpenEntry,
+  type TextItem,
+  type UpdateEntryNotesInput,
   activityFormSchema,
   activityTagInputSchema,
   reorderSchema,
+  updateEntryNotesSchema,
 } from "./schemas";
 
 export async function getActivitySelectorStateAction(): Promise<ActivitySelectorState> {
@@ -89,4 +94,15 @@ export async function updateActivityTagAction(
 
 export async function deleteActivityTagAction(id: string): Promise<void> {
   await deleteActivityTag(id);
+}
+
+export async function getEntryNotesAction(id: string): Promise<TextItem[]> {
+  return getEntryNotes(id);
+}
+
+export async function updateEntryNotesAction(
+  input: UpdateEntryNotesInput,
+): Promise<void> {
+  const parsed = updateEntryNotesSchema.parse(input);
+  await updateEntryNotes(parsed.id, parsed.notes);
 }

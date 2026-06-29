@@ -6,6 +6,7 @@ import { BaseWidget } from "../../../../components/base-widget/BaseWidget";
 import { useWidget } from "../../../../components/base-widget/useWidget";
 import { useWidgetConfig } from "../../../../components/base-widget/useWidgetConfig";
 import type { WidgetComponentProps, WidgetDefinition } from "../../../registry";
+import { EntryNotesEditor } from "../shared/EntryNotesEditor";
 import { formatElapsed, useActivitySelector } from "./useActivitySelector";
 import {
   activitySelectorConfigSchema,
@@ -108,8 +109,15 @@ function SevenSegmentClock({ ms, color }: { ms: number; color: string }) {
 
 export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
   const { locked, onRemove } = useWidget(id);
-  const { activities, tags, active, elapsedMs, hydrated, setActiveActivity } =
-    useActivitySelector();
+  const {
+    activities,
+    tags,
+    active,
+    open: runningEntry,
+    elapsedMs,
+    hydrated,
+    setActiveActivity,
+  } = useActivitySelector();
 
   const activeTags = active ? tags.filter((t) => active.tagIds.includes(t.id)) : [];
 
@@ -265,6 +273,16 @@ export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
             </div>
           )}
         </div>
+
+        {runningEntry?.id && (
+          <div onMouseDown={(e) => e.stopPropagation()}>
+            <EntryNotesEditor
+              key={runningEntry.id}
+              entryId={runningEntry.id}
+              disabled={!locked}
+            />
+          </div>
+        )}
 
         {clockMode !== "hide-big" && clockMode !== "hidden" && (
           <div

@@ -140,7 +140,9 @@ export function useActivitySelector() {
             ? applyOpenOptimistic({ type: "set", open: null })
             : applyOpenOptimistic({
                 type: "set",
-                open: { activityId, startedAt: Date.now() },
+                // No real id until startActivityAction resolves; the notes editor
+                // stays hidden for the empty id.
+                open: { id: "", activityId, startedAt: Date.now() },
               }),
         async () => {
           if (activityId === null) {

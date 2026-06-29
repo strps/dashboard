@@ -6,7 +6,12 @@ import { db } from "@/lib/db";
 import { verifySession } from "@/lib/dal/session";
 
 import { activity, activityActivityTag, activityTag, timeEntry } from "./db";
-import type { ActivityTag, ActivityTagInput } from "./schemas";
+import {
+  entryMetadataSchema,
+  type ActivityTag,
+  type ActivityTagInput,
+  type TextItem,
+} from "./schemas";
 
 // --- Activities ---
 
@@ -257,8 +262,13 @@ export async function deleteActivityTag(id: string): Promise<void> {
 // --- Time entries ---
 
 export interface OpenEntry {
+  id: string;
   activityId: string;
   startedAt: number;
+}
+
+function parseMetadata(raw: unknown): { notes: TextItem[] } {
+  return entryMetadataSchema.parse(raw ?? {});
 }
 
 export interface ClosedEntry {
@@ -279,6 +289,7 @@ export async function getOpenEntry(): Promise<OpenEntry | null> {
   const { userId } = await verifySession();
   const [r] = await db
     .select({
+      id: timeEntry.id,
       activityId: timeEntry.activityId,
       startedAt: timeEntry.startedAt,
     })
@@ -286,7 +297,7 @@ export async function getOpenEntry(): Promise<OpenEntry | null> {
     .where(and(eq(timeEntry.userId, userId), isNull(timeEntry.endedAt)))
     .limit(1);
   if (!r) return null;
-  return { activityId: r.activityId, startedAt: r.startedAt.getTime() };
+  return { id: r.id, activityId: r.activityId, startedAt: r.startedAt.getTime() };
 }
 
 export async function startEntry(activityId: string): Promise<OpenEntry> {
@@ -312,6 +323,7 @@ export async function startEntry(activityId: string): Promise<OpenEntry> {
       .returning();
 
     return {
+      id: inserted.id,
       activityId: inserted.activityId,
       startedAt: inserted.startedAt.getTime(),
     };
@@ -409,6 +421,38 @@ export async function deleteEntry(id: string): Promise<void> {
   const { userId } = await verifySession();
   await db
     .delete(timeEntry)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)));
+}
+
+export async function getEntryNotes(id: string): Promise<TextItem[]> {
+  const { userId } = await verifySession();
+  const [r] = await db
+    .select({ metadata: timeEntry.metadata })
+    .from(timeEntry)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)))
+    .limit(1);
+  if (!r) throw new Error("Entry not found");
+  return parseMetadata(r.metadata).notes;
+}
+
+export async function updateEntryNotes(
+  id: string,
+  notes: TextItem[],
+): Promise<void> {
+  const { userId } = await verifySession();
+
+  const [owned] = await db
+    .select({ metadata: timeEntry.metadata })
+    .from(timeEntry)
+    .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)))
+    .limit(1);
+  if (!owned) throw new Error("Entry not found");
+
+  // Read-modify-write so future metadata keys are preserved.
+  const next = { ...parseMetadata(owned.metadata), notes };
+  await db
+    .update(timeEntry)
+    .set({ metadata: next })
     .where(and(eq(timeEntry.id, id), eq(timeEntry.userId, userId)));
 }
 
