@@ -20,9 +20,15 @@ const inputCls =
 export function EntryNotesEditor({
   entryId,
   disabled = false,
+  fill = false,
 }: {
   entryId: string | null;
   disabled?: boolean;
+  /**
+   * Fill the parent height and keep the "Notes" header fixed while only the
+   * items list scrolls. When false (default) the editor sizes to its content.
+   */
+  fill?: boolean;
 }) {
   const { notes, addItem, insertItemAfter, updateItemText, removeItem } =
     useEntryNotes(entryId);
@@ -58,8 +64,8 @@ export function EntryNotesEditor({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between">
+    <div className={`flex flex-col gap-1${fill ? " h-full min-h-0" : ""}`}>
+      <div className="flex shrink-0 items-center justify-between">
         <span className={labelCls}>Notes</span>
         <button
           type="button"
@@ -77,7 +83,9 @@ export function EntryNotesEditor({
       {notes.length === 0 ? (
         <span className="px-0.5 py-1 text-[11px] text-white/25">No notes yet.</span>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <div
+          className={`flex flex-col gap-1.5${fill ? " min-h-0 flex-1 overflow-y-auto" : ""}`}
+        >
           {notes.map((n) => (
             <div key={n.id} className="flex items-center gap-1.5">
               <input

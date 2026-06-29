@@ -291,13 +291,14 @@ export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
 
         {runningEntry?.id && (
           <div
-            className="flex-1 min-h-0 overflow-y-auto"
+            className="flex-1 min-h-0"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <EntryNotesEditor
               key={runningEntry.id}
               entryId={runningEntry.id}
               disabled={!locked}
+              fill
             />
           </div>
         )}
