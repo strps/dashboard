@@ -274,26 +274,30 @@ export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
           )}
         </div>
 
-        {runningEntry?.id && (
-          <div onMouseDown={(e) => e.stopPropagation()}>
-            <EntryNotesEditor
-              key={runningEntry.id}
-              entryId={runningEntry.id}
-              disabled={!locked}
-            />
-          </div>
-        )}
-
         {clockMode !== "hide-big" && clockMode !== "hidden" && (
           <div
             className={[
-              "flex-1 min-h-0 flex items-center justify-center px-2 py-1 transition-opacity",
+              "flex items-center justify-center px-2 py-1 transition-opacity",
+              runningEntry?.id ? "shrink-0" : "flex-1 min-h-0",
               clockMode === "muted" ? "opacity-20" : "",
             ].join(" ")}
           >
             <SevenSegmentClock
               ms={elapsedMs}
               color={active?.color ?? "#10b981"}
+            />
+          </div>
+        )}
+
+        {runningEntry?.id && (
+          <div
+            className="flex-1 min-h-0 overflow-y-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <EntryNotesEditor
+              key={runningEntry.id}
+              entryId={runningEntry.id}
+              disabled={!locked}
             />
           </div>
         )}
@@ -305,9 +309,9 @@ export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
 export const activitySelectorWidget: WidgetDefinition<ActivitySelectorConfig> = {
   type: "activitySelector",
   label: "Activity Selector",
-  defaultSize: { w: 3, h: 3 },
+  defaultSize: { w: 3, h: 4 },
   minW: 2,
-  minH: 3,
+  minH: 4,
   component: ActivitySelectorWidget,
   configSchema: activitySelectorConfigSchema,
   defaultConfig: defaultActivitySelectorConfig,

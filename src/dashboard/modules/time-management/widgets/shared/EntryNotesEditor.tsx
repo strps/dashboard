@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Plus, X } from "lucide-react";
 
 import { useEntryNotes } from "./useEntryNotes";
@@ -11,6 +12,10 @@ const inputCls =
 /**
  * Per-entry free-text notes list. Renders one text input per note with add/remove
  * controls. Shared between the Calendar Properties and Activity Selector widgets.
+ *
+ * Keyboard behaviour mirrors the Notes widget: Enter inserts a new item below the
+ * current one and focuses it; Backspace on an empty item removes it and focuses the
+ * previous one.
  */
 export function EntryNotesEditor({
   entryId,
@@ -19,8 +24,38 @@ export function EntryNotesEditor({
   entryId: string | null;
   disabled?: boolean;
 }) {
-  const { notes, addItem, updateItemText, removeItem } = useEntryNotes(entryId);
+  const { notes, addItem, insertItemAfter, updateItemText, removeItem } =
+    useEntryNotes(entryId);
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+
+  function focusItem(id: string, caretToEnd = false) {
+    requestAnimationFrame(() => {
+      const el = inputRefs.current.get(id);
+      if (!el) return;
+      el.focus();
+      if (caretToEnd) el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }
+
+  function handleAdd() {
+    focusItem(addItem());
+  }
+
+  function handleKeyDown(id: string, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (disabled) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      focusItem(insertItemAfter(id));
+    } else if (e.key === "Backspace" && e.currentTarget.value === "") {
+      e.preventDefault();
+      const idx = notes.findIndex((n) => n.id === id);
+      const prevId = idx > 0 ? notes[idx - 1].id : null;
+      removeItem(id);
+      if (prevId) focusItem(prevId, true);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -30,7 +65,7 @@ export function EntryNotesEditor({
           type="button"
           disabled={disabled}
           onMouseDown={stop}
-          onClick={addItem}
+          onClick={handleAdd}
           title="Add note"
           className="flex items-center gap-1 rounded px-1 py-0.5 text-[10px] text-white/40 hover:text-white/80 disabled:opacity-40"
         >
@@ -46,12 +81,17 @@ export function EntryNotesEditor({
           {notes.map((n) => (
             <div key={n.id} className="flex items-center gap-1.5">
               <input
+                ref={(el) => {
+                  if (el) inputRefs.current.set(n.id, el);
+                  else inputRefs.current.delete(n.id);
+                }}
                 type="text"
                 value={n.text}
                 disabled={disabled}
                 placeholder="Note…"
                 onMouseDown={stop}
                 onChange={(e) => updateItemText(n.id, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(n.id, e)}
                 className={inputCls}
               />
               <button

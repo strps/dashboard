@@ -53,13 +53,34 @@ export function useEntryNotes(entryId: string | null) {
     [entryId],
   );
 
-  const addItem = useCallback(() => {
+  const addItem = useCallback((): string => {
+    const newId = crypto.randomUUID();
     setNotes((prev) => {
-      const next = [...prev, { id: crypto.randomUUID(), text: "" }];
+      const next = [...prev, { id: newId, text: "" }];
       save(next, false);
       return next;
     });
+    return newId;
   }, [save]);
+
+  const insertItemAfter = useCallback(
+    (id: string): string => {
+      const newId = crypto.randomUUID();
+      setNotes((prev) => {
+        const idx = prev.findIndex((n) => n.id === id);
+        const insertAt = idx === -1 ? prev.length : idx + 1;
+        const next = [
+          ...prev.slice(0, insertAt),
+          { id: newId, text: "" },
+          ...prev.slice(insertAt),
+        ];
+        save(next, false);
+        return next;
+      });
+      return newId;
+    },
+    [save],
+  );
 
   const updateItemText = useCallback(
     (id: string, text: string) => {
@@ -83,5 +104,5 @@ export function useEntryNotes(entryId: string | null) {
     [save],
   );
 
-  return { notes, addItem, updateItemText, removeItem };
+  return { notes, addItem, insertItemAfter, updateItemText, removeItem };
 }
