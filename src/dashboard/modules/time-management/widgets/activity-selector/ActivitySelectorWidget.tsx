@@ -277,8 +277,7 @@ export function ActivitySelectorWidget({ id }: WidgetComponentProps) {
         {clockMode !== "hide-big" && clockMode !== "hidden" && (
           <div
             className={[
-              "flex items-center justify-center px-2 py-1 transition-opacity",
-              runningEntry?.id ? "shrink-0" : "flex-1 min-h-0",
+              "flex items-center justify-center px-2 py-1 transition-opacity shrink-0",
               clockMode === "muted" ? "opacity-20" : "",
             ].join(" ")}
           >

@@ -1,13 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { useEntryNotes } from "./useEntryNotes";
 
 const labelCls = "text-[10px] font-mono uppercase tracking-widest text-white/40";
 const inputCls =
-  "w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-xs text-white outline-none focus:border-white/30 disabled:opacity-40";
+  "flex-1 bg-transparent text-sm text-white/70 outline-none placeholder:text-white/20 font-mono disabled:opacity-40";
 
 /**
  * Per-entry free-text notes list. Renders one text input per note with add/remove
@@ -87,7 +87,7 @@ export function EntryNotesEditor({
           className={`flex flex-col gap-1.5${fill ? " min-h-0 flex-1 overflow-y-auto" : ""}`}
         >
           {notes.map((n) => (
-            <div key={n.id} className="flex items-center gap-1.5">
+            <div key={n.id} className="group flex items-center gap-2">
               <input
                 ref={(el) => {
                   if (el) inputRefs.current.set(n.id, el);
@@ -108,9 +108,10 @@ export function EntryNotesEditor({
                 onMouseDown={stop}
                 onClick={() => removeItem(n.id)}
                 title="Remove note"
-                className="shrink-0 rounded p-1 text-white/30 hover:text-red-300 disabled:opacity-40"
+                aria-label="Remove note"
+                className="shrink-0 opacity-0 group-hover:opacity-100 text-white/40 hover:text-white text-xs disabled:opacity-0"
               >
-                <X size={12} />
+                ×
               </button>
             </div>
           ))}
